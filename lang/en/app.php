@@ -32,4 +32,17 @@ return [
     'feed_coming_soon' => 'Feed / posts module coming next.',
     'reset_link_sent' => 'A password reset link has been sent to your email.',
     'reset_password_email_link' => 'Reset your password: :url',
+
+    'edit_profile' => 'Edit Profile',
+    'change_avatar' => 'Change Avatar',
+    'save_changes' => 'Save Changes',
+    'cancel' => 'Cancel',
+    'bio' => 'Bio',
+    'bio_placeholder' => 'Tell us about yourself...',
+    'bio_hint' => 'Maximum 500 characters',
+    'profile_updated' => 'Profile updated successfully!',
+    'about' => 'About',
+    'no_posts_yet' => 'No posts yet.',
+    'saving' => 'Saving...',
+    'something_went_wrong' => 'Something went wrong. Please try again.',
 ];

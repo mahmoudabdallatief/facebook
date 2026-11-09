@@ -11,7 +11,7 @@
             <button type="button" onclick="toggleTheme()" class="rounded-lg px-3 py-1.5 text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="Toggle theme">◐</button>
 
             @auth
-                <a href="{{ route('dashboard') }}" class="flex items-center gap-2 rounded-lg px-2 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                <a href="{{ route('profile.edit') }}" class="flex items-center gap-2 rounded-lg px-2 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800">
                     @if(auth()->user()->avatarUrl())
                         <img src="{{ auth()->user()->avatarUrl() }}" alt="" class="h-7 w-7 rounded-full object-cover">
                     @else

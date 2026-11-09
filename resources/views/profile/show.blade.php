@@ -1,0 +1,38 @@
+@extends('layouts.app')
+
+@section('title', $profileUser->name)
+
+@section('content')
+<div class="mx-auto max-w-2xl">
+    <x-card center>
+        <div class="flex flex-col items-center gap-4">
+            @if($profileUser->avatarUrl())
+                <img src="{{ $profileUser->avatarUrl() }}" alt="{{ $profileUser->name }}" class="h-24 w-24 rounded-full object-cover border-4 border-fb-surface dark:border-zinc-900">
+            @else
+                <div class="flex h-24 w-24 items-center justify-center rounded-full bg-fb-blue text-3xl font-bold text-white border-4 border-fb-surface dark:border-zinc-900">{{ mb_substr($profileUser->name, 0, 1) }}</div>
+            @endif
+
+            <div>
+                <h1 class="text-2xl font-bold">{{ $profileUser->name }}</h1>
+                @auth
+                    @if(auth()->id() === $profileUser->id)
+                        <a href="{{ route('profile.edit') }}" class="mt-1 inline-block text-sm text-fb-blue hover:underline">{{ __('app.edit_profile') }}</a>
+                    @endif
+                @endauth
+            </div>
+
+            @if($profileUser->bio)
+                <div class="w-full max-w-md text-center text-fb-muted dark:text-zinc-400">{{ $profileUser->bio }}</div>
+            @endif
+        </div>
+    </x-card>
+
+    @auth
+        @if(auth()->id() !== $profileUser->id)
+            <x-card :title="__('app.about')" class="mt-4">
+                <p class="text-fb-muted dark:text-zinc-400">{{ __('app.no_posts_yet') }}</p>
+            </x-card>
+        @endif
+    @endauth
+</div>
+@endsection
