@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -54,5 +56,65 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function sentFriendRequests(): HasMany
+    {
+        return $this->hasMany(Friendship::class, 'user_id');
+    }
+
+    public function receivedFriendRequests(): HasMany
+    {
+        return $this->hasMany(Friendship::class, 'friend_id');
+    }
+
+    public function friendsOfMine(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'friendships', 'user_id', 'friend_id')
+            ->wherePivot('status', 'accepted')
+            ->withPivot('accepted_at')
+            ->withTimestamps();
+    }
+
+    public function friendOf(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'friendships', 'friend_id', 'user_id')
+            ->wherePivot('status', 'accepted')
+            ->withPivot('accepted_at')
+            ->withTimestamps();
+    }
+
+    /** @return \Illuminate\Support\Collection<int, User> */
+    public function friends()
+    {
+        return $this->friendsOfMine->merge($this->friendOf)->unique('id')->values();
+    }
+
+    public function friendshipWith(User $other): ?Friendship
+    {
+        return Friendship::query()
+            ->where(function ($q) use ($other): void {
+                $q->where('user_id', $this->id)->where('friend_id', $other->id);
+            })
+            ->orWhere(function ($q) use ($other): void {
+                $q->where('user_id', $other->id)->where('friend_id', $this->id);
+            })
+            ->first();
+    }
+
+    public function isFriendWith(User $other): bool
+    {
+        $f = $this->friendshipWith($other);
+        return $f !== null && $f->status === 'accepted';
+    }
+
+    public function hasPendingRequestTo(User $other): bool
+    {
+        return $this->sentFriendRequests()->where('friend_id', $other->id)->where('status', 'pending')->exists();
+    }
+
+    public function hasPendingRequestFrom(User $other): bool
+    {
+        return $this->receivedFriendRequests()->where('user_id', $other->id)->where('status', 'pending')->exists();
     }
 }

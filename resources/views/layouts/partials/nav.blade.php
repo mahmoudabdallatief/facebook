@@ -7,8 +7,11 @@
         </a>
 
         <div class="flex items-center gap-2 text-sm">
+            @auth
+                <a href="{{ route('friends.index') }}" class="rounded-lg px-3 py-1.5 font-medium text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ __('app.friends') }}</a>
+            @endauth
             <a href="{{ route('locale.switch', $isAr ? 'en' : 'ar') }}" class="rounded-lg px-3 py-1.5 text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ $isAr ? 'EN' : 'ع' }}</a>
-            <button type="button" onclick="toggleTheme()" class="rounded-lg px-3 py-1.5 text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="Toggle theme">◐</button>
+            <button type="button" onclick="toggleTheme()" class="rounded-lg px-3 py-1.5 text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="{{ __('app.toggle_theme') }}">◐</button>
 
             @auth
                 <a href="{{ route('profile.edit') }}" class="flex items-center gap-2 rounded-lg px-2 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800">

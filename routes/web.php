@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\FriendController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ThemeController;
@@ -34,6 +35,13 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    Route::get('friends', [FriendController::class, 'index'])->name('friends.index');
+    Route::post('friends/{user}', [FriendController::class, 'send'])->name('friends.send');
+    Route::post('friends/requests/{friendship}/accept', [FriendController::class, 'accept'])->name('friends.accept');
+    Route::post('friends/requests/{friendship}/reject', [FriendController::class, 'reject'])->name('friends.reject');
+    Route::post('friends/requests/{friendship}/cancel', [FriendController::class, 'cancel'])->name('friends.cancel');
+    Route::delete('friends/{user}', [FriendController::class, 'destroy'])->name('friends.destroy');
 
     Route::get('verify-email', EmailVerificationPromptController::class)->name('verification.notice');
     Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
