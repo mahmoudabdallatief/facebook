@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\{JsonResponse, RedirectResponse, Request};
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\File;
-
-use App\Models\User;
+use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
-    public function edit(): \Illuminate\View\View
+    public function edit(): View
     {
         return view('profile.edit', [
             'user' => auth()->user(),
@@ -28,11 +30,11 @@ class ProfileController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
+            if ($user->avatar && ! str_starts_with($user->avatar, 'http')) {
                 Storage::disk('public')->delete(str_replace('storage/', '', $user->avatar));
             }
             $path = $request->file('avatar')->store('avatars', 'public');
-            $validated['avatar'] = 'storage/' . $path;
+            $validated['avatar'] = 'storage/'.$path;
         }
 
         $user->update($validated);
@@ -53,7 +55,7 @@ class ProfileController extends Controller
             ->with('status', __('app.profile_updated'));
     }
 
-    public function show(User $user): \Illuminate\View\View
+    public function show(User $user): View
     {
         return view('profile.show', [
             'profileUser' => $user,

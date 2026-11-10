@@ -36,8 +36,8 @@ return [
 
     'mailers' => [
         'mailgun' => [
-                'transport' => 'mailgun',
-            ],
+            'transport' => 'mailgun',
+        ],
         'smtp' => [
             'transport' => 'smtp',
             'url' => env('MAIL_URL'),

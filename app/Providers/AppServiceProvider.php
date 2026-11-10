@@ -2,12 +2,17 @@
 
 namespace App\Providers;
 
+use App\Models\Post;
+use App\Policies\PostPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\ServiceProvider;
+use Symfony\Component\Mime\Email;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(Post::class, PostPolicy::class);
+
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
@@ -40,11 +47,11 @@ class AppServiceProvider extends ServiceProvider
                 ->subject(Lang::get('Reset Password Notification'))
                 ->greeting(Lang::get('Hello!'))
                 ->line(Lang::get('You are receiving this email because we received a password reset request for your account.'))
-                ->line(new \Illuminate\Support\HtmlString('<a href="'.$url.'" target="_blank" rel="noopener noreferrer" style="display:inline-block; color:#0866ff !important; text-decoration:underline !important; word-break:break-all; cursor:pointer;">'.$url.'</a>'))
+                ->line(new HtmlString('<a href="'.$url.'" target="_blank" rel="noopener noreferrer" style="display:inline-block; color:#0866ff !important; text-decoration:underline !important; word-break:break-all; cursor:pointer;">'.$url.'</a>'))
                 ->line(Lang::get('This password reset link will expire in :count minutes.', ['count' => $expire]))
                 ->line(Lang::get('If you did not request a password reset, no further action is required.'));
 
-            $mail->withSymfonyMessage(function (\Symfony\Component\Mime\Email $message) use ($url): void {
+            $mail->withSymfonyMessage(function (Email $message) use ($url): void {
                 $text = Lang::get('Reset Password Notification')."\n\n"
                     .Lang::get('You are receiving this email because we received a password reset request for your account.')."\n\n"
                     .Lang::get('Reset Password').': '.$url."\n\n"

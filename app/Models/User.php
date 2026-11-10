@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -84,7 +85,7 @@ class User extends Authenticatable implements MustVerifyEmail
             ->withTimestamps();
     }
 
-    /** @return \Illuminate\Support\Collection<int, User> */
+    /** @return Collection<int, User> */
     public function friends()
     {
         return $this->friendsOfMine->merge($this->friendOf)->unique('id')->values();
@@ -105,6 +106,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isFriendWith(User $other): bool
     {
         $f = $this->friendshipWith($other);
+
         return $f !== null && $f->status === 'accepted';
     }
 
@@ -116,5 +118,15 @@ class User extends Authenticatable implements MustVerifyEmail
     public function hasPendingRequestFrom(User $other): bool
     {
         return $this->receivedFriendRequests()->where('user_id', $other->id)->where('status', 'pending')->exists();
+    }
+
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
+    }
+
+    public function postsMade(): HasMany
+    {
+        return $this->posts();
     }
 }

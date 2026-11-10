@@ -7,8 +7,10 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\FriendController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ThemeController;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +37,22 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    Route::get('posts', [PostController::class, 'index'])->name('posts.index');
+    Route::get('posts/create', [PostController::class, 'create'])->name('posts.create');
+    Route::post('posts', [PostController::class, 'store'])->name('posts.store');
+    Route::get('posts/{post}', [PostController::class, 'show'])->name('posts.show');
+    Route::get('posts/{post}/edit', [PostController::class, 'edit'])->name('posts.edit');
+    Route::match(['put', 'patch'], 'posts/{post}', [PostController::class, 'update'])->name('posts.update');
+    Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
+
+    Route::prefix('uploads')->group(function (): void {
+        Route::post('initiate', [ChunkedUploadController::class, 'initiate'])->name('uploads.initiate');
+        Route::post('chunk', [ChunkedUploadController::class, 'uploadChunk'])->name('uploads.chunk');
+        Route::post('complete', [ChunkedUploadController::class, 'complete'])->name('uploads.complete');
+        Route::get('status', [ChunkedUploadController::class, 'status'])->name('uploads.status');
+        Route::delete('cancel', [ChunkedUploadController::class, 'cancel'])->name('uploads.cancel');
+    });
 
     Route::get('friends', [FriendController::class, 'index'])->name('friends.index');
     Route::post('friends/{user}', [FriendController::class, 'send'])->name('friends.send');

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Friendship;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -75,5 +76,25 @@ class DatabaseSeeder extends Seeder
         }
 
         // The rest are suggestions (no relation)
+
+        // Sample posts for timeline
+        $postSamples = [
+            ['body' => 'Just finished building my first Laravel app! Feeling excited to share more.', 'visibility' => 'public'],
+            ['body' => 'Beautiful sunset at the beach today 🌅', 'visibility' => 'public'],
+            ['body' => 'Working on a new project with React and Tailwind. Can\'t wait to launch it.', 'visibility' => 'friends'],
+            ['body' => 'Morning coffee ☕ and coding session. Productive day ahead!', 'visibility' => 'public'],
+            ['body' => 'Travel memories from last summer. Missing those days.', 'visibility' => 'friends'],
+        ];
+
+        $allUsers = $users->push($me);
+
+        foreach ($allUsers as $index => $user) {
+            $sample = $postSamples[array_rand($postSamples)];
+            Post::create([
+                'user_id' => $user->id,
+                'body' => $sample['body'],
+                'visibility' => $sample['visibility'],
+            ]);
+        }
     }
 }

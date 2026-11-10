@@ -28,8 +28,9 @@
 
     <x-card :title="__('app.home')">
         <p class="text-fb-muted dark:text-zinc-400">{{ __('app.welcome_sub') }}</p>
-        <div class="mt-4 rounded-lg border border-dashed border-fb-border p-6 text-center text-sm text-fb-muted dark:border-zinc-700 dark:text-zinc-500">
-            {{ __('app.feed_coming_soon') }}
+        <div class="mt-4 flex gap-3">
+            <a href="{{ route('posts.index') }}" class="flex-1 inline-flex items-center justify-center rounded-lg bg-fb-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-fb-blue-hover">{{ __('app.timeline') }}</a>
+            <a href="{{ route('posts.create') }}" class="inline-flex items-center justify-center rounded-lg bg-fb-green px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95">{{ __('app.write_post') }}</a>
         </div>
     </x-card>
 </div>

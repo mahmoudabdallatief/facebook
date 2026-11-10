@@ -13,6 +13,7 @@
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif
+    @stack('scripts')
 </head>
 <body class="min-h-screen bg-fb-bg text-fb-text dark:bg-zinc-950 dark:text-zinc-100 font-sans antialiased">
     @include('layouts.partials.nav')

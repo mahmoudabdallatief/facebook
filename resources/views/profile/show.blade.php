@@ -59,5 +59,17 @@
             </x-card>
         @endif
     @endauth
+
+    <x-card :title="__('app.timeline')" class="mt-4">
+        <div class="space-y-4">
+            @forelse($profileUser->posts()->latest()->take(20)->get() as $post)
+                <x-post :post="$post" />
+            @empty
+                <div class="text-center py-8">
+                    <p class="text-fb-muted dark:text-zinc-500">{{ __('app.no_posts_yet') }}</p>
+                </div>
+            @endforelse
+        </div>
+    </x-card>
 </div>
 @endsection

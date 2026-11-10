@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Friendship;
-use App\Models\User;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Http\{RedirectResponse, Request};
 use Illuminate\View\View;
+
+use App\Models\{Friendship, PostMedia, User};
 
 class FriendController extends Controller
 {
@@ -69,8 +68,10 @@ class FriendController extends Controller
                 // if they sent to us, accept; else already pending
                 if ($existing->friend_id === $auth->id) {
                     $existing->update(['status' => 'accepted', 'accepted_at' => now()]);
+
                     return back()->with('status', __('app.friend_request_accepted'));
                 }
+
                 return back()->with('status', __('app.friend_request_pending'));
             }
         }
@@ -91,6 +92,7 @@ class FriendController extends Controller
             abort(403);
         }
         $friendship->update(['status' => 'accepted', 'accepted_at' => now()]);
+
         return back()->with('status', __('app.friend_request_accepted'));
     }
 
@@ -101,6 +103,7 @@ class FriendController extends Controller
             abort(403);
         }
         $friendship->delete();
+
         return back()->with('status', __('app.friend_request_rejected'));
     }
 
@@ -111,6 +114,7 @@ class FriendController extends Controller
             abort(403);
         }
         $friendship->delete();
+
         return back()->with('status', __('app.friend_request_cancelled'));
     }
 
@@ -121,6 +125,7 @@ class FriendController extends Controller
         if ($friendship) {
             $friendship->delete();
         }
+
         return back()->with('status', __('app.friend_removed'));
     }
 }
