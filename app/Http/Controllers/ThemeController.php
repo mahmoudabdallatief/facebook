@@ -16,6 +16,10 @@ class ThemeController extends Controller
 
         $request->session()->put('theme', $theme);
 
+        if ($request->user()) {
+            $request->user()->update(['theme' => $theme]);
+        }
+
         return redirect()->back(fallback: route('home'));
     }
 }

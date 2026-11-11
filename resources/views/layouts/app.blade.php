@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="{{ ($theme ?? session('theme', 'light')) === 'dark' ? 'dark' : '' }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="{{ (auth()->user() ? auth()->user()->theme : ($theme ?? session('theme', 'light'))) === 'dark' ? 'dark' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
     <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
-    <script>window.__initialTheme = @json($theme ?? session('theme', 'light'));</script>
+    <script>window.__initialTheme = @json(auth()->user() ? auth()->user()->theme : ($theme ?? session('theme', 'light')));</script>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif
