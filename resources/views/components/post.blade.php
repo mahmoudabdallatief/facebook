@@ -42,8 +42,52 @@
         </div>
     @endif
 
-    <div class="flex items-center justify-between border-t border-fb-border px-4 py-2 dark:border-zinc-800">
-        <span class="text-xs text-fb-muted dark:text-zinc-500">{{ __('app.comments') }}</span>
+    <x-reactions
+        :reactionable="$post"
+        :user-reaction="$post->userReaction($me)"
+        :counts="$post->reactionCounts()"
+        :total="$post->totalReactions()"
+        :url="route('posts.reactions.store', $post)"
+    />
+
+    <div class="border-t border-fb-border dark:border-zinc-800">
+        <div class="p-4 flex gap-2">
+            <button
+                type="button"
+                onclick="toggleCommentForm({{ $post->id }})"
+                class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-fb-blue hover:bg-fb-blue/5 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+                <span>💬</span>
+                {{ __('app.comment') }}
+            </button>
+        </div>
+
+        <div id="comment-form-wrapper-{{ $post->id }}" class="hidden p-4 border-t border-fb-border dark:border-zinc-800">
+            <form id="comment-form-{{ $post->id }}" class="flex gap-2">
+                <textarea name="body" rows="1" placeholder="{{ __('app.add_comment') }}" class="flex-1 min-h-[36px] rounded-lg border border-fb-border bg-fb-surface px-3 py-2 text-sm text-fb-text dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-fb-blue"></textarea>
+                <button
+                    type="submit"
+                    onclick="submitCommentForm(event, {{ $post->id }})"
+                    class="rounded-lg bg-fb-blue px-3 py-2 text-xs font-semibold text-white hover:bg-fb-blue-hover"
+                >
+                    {{ __('app.comment') }}
+                </button>
+            </form>
+        </div>
+
+        <div id="comments-list-{{ $post->id }}" class="p-4 border-t border-fb-border dark:border-zinc-800">
+            @forelse($post->comments()->with('user')->get() as $comment)
+                <x-comment
+                    :comment="$comment"
+                    :user-reaction="$comment->userReaction($me)"
+                    :can-edit="$me && $me->id === $comment->user_id"
+                    :can-delete="$me && $me->id === $comment->user_id"
+                    :depth="0"
+                />
+            @empty
+                <p class="text-xs text-center text-fb-muted dark:text-zinc-500 py-4">{{ __('app.no_comments_yet') }}</p>
+            @endforelse
+        </div>
     </div>
 </article>
 
@@ -79,6 +123,76 @@ function openDeleteModal(postId) {
 
 function closeDeleteModal(postId) {
     document.getElementById('delete-modal-' + postId)?.classList.add('hidden');
+}
+
+function toggleCommentForm(postId) {
+    const wrapper = document.getElementById('comment-form-wrapper-' + postId);
+    if (wrapper) wrapper.classList.toggle('hidden');
+}
+
+function submitCommentForm(event, postId) {
+    event.preventDefault();
+    console.log('submitCommentForm called', postId);
+    const form = event.target.closest('form');
+    console.log('form', form);
+    const body = form.querySelector('textarea[name="body"]').value.trim();
+    console.log('body', body);
+    if (!body) return;
+
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = '{{ __('app.saving') }}';
+
+    fetch('{{ route('comments.store') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            post_id: postId,
+            body: body,
+        }),
+    }).then(async (res) => {
+        console.log('response', res);
+        if (res.ok) {
+            const data = await res.json();
+            console.log('data', data);
+            location.reload();
+        } else {
+            const errorData = await res.json();
+            console.error('error', errorData);
+            btn.disabled = false;
+            btn.textContent = '{{ __('app.comment') }}';
+        }
+    }).catch(err => {
+        console.error('fetch error', err);
+        btn.disabled = false;
+        btn.textContent = '{{ __('app.comment') }}';
+    });
+}
+
+function toggleReaction(url, reactionType) {
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+            'Accept': 'application/json',
+        },
+        body: 'reaction_type=' + encodeURIComponent(reactionType),
+    }).then(async (res) => {
+        if (res.ok) {
+            const data = await res.json();
+            updateReactionUI(data);
+        }
+    });
+}
+
+function updateReactionUI(data) {
+    // Reload to reflect changes
+    location.reload();
 }
 
 document.addEventListener('click', (e) => {

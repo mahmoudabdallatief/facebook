@@ -8,10 +8,12 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\ChunkedUploadController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\FriendController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\ThemeController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,6 +47,14 @@ Route::middleware('auth')->group(function (): void {
     Route::get('posts/{post}/edit', [PostController::class, 'edit'])->name('posts.edit');
     Route::match(['put', 'patch'], 'posts/{post}', [PostController::class, 'update'])->name('posts.update');
     Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
+
+    Route::post('posts/{post}/reactions', [ReactionController::class, 'store'])->name('posts.reactions.store');
+    Route::post('comments/{comment}/reactions', [ReactionController::class, 'storeOnComment'])->name('comments.reactions.store');
+
+    Route::get('posts/{post}/comments', [CommentController::class, 'index'])->name('posts.comments.index');
+    Route::post('comments', [CommentController::class, 'store'])->name('comments.store');
+    Route::match(['put', 'patch'], 'comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
+    Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
     Route::prefix('uploads')->group(function (): void {
         Route::post('initiate', [ChunkedUploadController::class, 'initiate'])->name('uploads.initiate');
