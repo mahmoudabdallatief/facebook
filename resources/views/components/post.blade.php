@@ -2,6 +2,9 @@
 
 @php($me = auth()->user())
 @php($canEdit = $me && $me->id === $post->user_id)
+@php($shareTarget = $post->rootOriginalPost())
+@php($shareCount = $shareTarget->shareCount())
+@php($alreadyShared = $me ? $shareTarget->hasSharedBy($me) : false)
 <article id="post-{{ $post->id }}" class="rounded-xl border border-fb-border bg-fb-surface shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-center gap-3 p-4">
         <a href="{{ route('profile.show', $post->user) }}">
@@ -14,6 +17,15 @@
         <div class="min-w-0 flex-1">
             <a href="{{ route('profile.show', $post->user) }}" class="font-semibold hover:underline">{{ $post->user->name }}</a>
             <div class="text-xs text-fb-muted dark:text-zinc-400">{{ $post->created_at->diffForHumans() }}@if($post->visibility === 'friends') · {{ __('app.visibility_friends') }}@endif</div>
+            @if($post->isShare())
+                <div class="text-xs text-fb-muted dark:text-zinc-400">
+                    @if($shareTarget->user && $shareTarget->user->id !== $post->user->id)
+                        <a href="{{ route('profile.show', $shareTarget->user) }}" class="hover:underline">{{ __('app.shared_post_of', ['name' => $shareTarget->user->name]) }}</a>
+                    @else
+                        {{ __('app.shared_a_post') }}
+                    @endif
+                </div>
+            @endif
         </div>
         @if($canEdit)
             <div class="relative">
@@ -28,9 +40,13 @@
         @endif
     </div>
 
-    <div class="px-4 pb-3 text-sm leading-relaxed">{{ nl2br(e($post->body)) }}</div>
+    @if($post->body)
+        <div class="px-4 pb-3 text-sm leading-relaxed">{{ nl2br(e($post->body)) }}</div>
+    @endif
 
-    @if($post->media->isNotEmpty())
+    @if($post->isShare())
+        @include('components.shared-original', ['original' => $shareTarget, 'me' => $me])
+    @elseif($post->media->isNotEmpty())
         <div class="grid gap-1 {{ $post->media->count() === 1 ? 'grid-cols-1' : ($post->media->count() === 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3') }}">
             @foreach($post->media as $media)
                 @if($media->type === 'video')
@@ -51,7 +67,7 @@
     />
 
     <div class="border-t border-fb-border dark:border-zinc-800">
-        <div class="p-4 flex gap-2">
+        <div class="p-4 flex flex-wrap gap-2">
             <button
                 type="button"
                 onclick="toggleCommentForm({{ $post->id }})"
@@ -60,6 +76,30 @@
                 <span>💬</span>
                 {{ __('app.comment') }}
             </button>
+
+            <button
+                type="button"
+                onclick="openShareModal({{ $post->id }})"
+                class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-fb-blue hover:bg-fb-blue/5 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+                <span>↗</span>
+                {{ __('app.share') }}
+            </button>
+
+            <a
+                href="{{ route('posts.shares.index', $shareTarget) }}"
+                class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-fb-muted hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            >
+                <span>🔁</span>
+                {{ $shareCount }} {{ $shareCount === 1 ? __('app.share') : __('app.shares') }}
+            </a>
+
+            @if($alreadyShared)
+                <span class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-fb-muted dark:text-zinc-500">
+                    <span>✓</span>
+                    {{ __('app.shared') }}
+                </span>
+            @endif
         </div>
 
         <div id="comment-form-wrapper-{{ $post->id }}" class="hidden p-4 border-t border-fb-border dark:border-zinc-800">
@@ -90,6 +130,36 @@
         </div>
     </div>
 </article>
+
+<!-- Share Modal -->
+<div id="share-modal-{{ $post->id }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50">
+    <div class="bg-fb-surface rounded-xl shadow-xl max-w-md w-full mx-4 dark:bg-zinc-900">
+        <div class="p-4 border-b border-fb-border dark:border-zinc-700">
+            <h3 class="font-semibold">{{ __('app.share_post') }}</h3>
+        </div>
+        <form method="POST" action="{{ route('posts.shares.store', $shareTarget) }}" class="p-4 space-y-3">
+            @csrf
+            <div class="flex gap-3">
+                @if($me && $me->avatarUrl())
+                    <img src="{{ $me->avatarUrl() }}" alt="" class="h-9 w-9 rounded-full object-cover">
+                @else
+                    <span class="flex h-9 w-9 items-center justify-center rounded-full bg-fb-blue text-sm font-bold text-white">{{ $me ? mb_substr($me->name, 0, 1) : '?' }}</span>
+                @endif
+                <div class="min-w-0 flex-1 space-y-2">
+                    <textarea name="body" rows="3" placeholder="{{ __('app.share_placeholder') }}" class="w-full rounded-lg border border-fb-border bg-fb-surface px-3 py-2 text-sm text-fb-text dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-fb-blue">{{ old('body') }}</textarea>
+                    <select name="visibility" class="w-full rounded-lg border border-fb-border bg-fb-surface px-3 py-2 text-sm text-fb-text dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-fb-blue">
+                        <option value="public">{{ __('app.visibility_public') }}</option>
+                        <option value="friends">{{ __('app.visibility_friends') }}</option>
+                    </select>
+                </div>
+            </div>
+            <div class="pt-2 flex justify-end gap-2">
+                <button type="button" onclick="closeShareModal({{ $post->id }})" class="rounded-lg bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600">{{ __('app.cancel') }}</button>
+                <button type="submit" class="rounded-lg bg-fb-blue px-4 py-2 text-sm font-semibold text-white hover:bg-fb-blue-hover">{{ __('app.share') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- Delete Confirmation Modal -->
 <div id="delete-modal-{{ $post->id }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50">
@@ -128,6 +198,20 @@ function closeDeleteModal(postId) {
 function toggleCommentForm(postId) {
     const wrapper = document.getElementById('comment-form-wrapper-' + postId);
     if (wrapper) wrapper.classList.toggle('hidden');
+}
+
+function openShareModal(postId) {
+    const modal = document.getElementById('share-modal-' + postId);
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeShareModal(postId) {
+    const modal = document.getElementById('share-modal-' + postId);
+    if (modal) {
+        modal.classList.add('hidden');
+    }
 }
 
 function submitCommentForm(event, postId) {
@@ -207,6 +291,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         document.querySelectorAll('[id^="delete-modal-"]').forEach(m => m.classList.add('hidden'));
+        document.querySelectorAll('[id^="share-modal-"]').forEach(m => m.classList.add('hidden'));
         document.querySelectorAll('[id$="-menu"]').forEach(m => m.classList.add('hidden'));
     }
 });

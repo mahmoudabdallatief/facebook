@@ -12,6 +12,7 @@ class Post extends Model
 {
     protected $fillable = [
         'user_id',
+        'original_post_id',
         'body',
         'visibility',
     ];
@@ -27,6 +28,40 @@ class Post extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function originalPost(): BelongsTo
+    {
+        return $this->belongsTo(Post::class, 'original_post_id');
+    }
+
+    public function sharedPosts(): HasMany
+    {
+        return $this->hasMany(Post::class, 'original_post_id')->latest();
+    }
+
+    public function isShare(): bool
+    {
+        return $this->original_post_id !== null;
+    }
+
+    public function rootOriginalPost(): Post
+    {
+        return $this->originalPost ?? $this;
+    }
+
+    public function shareCount(): int
+    {
+        return $this->sharedPosts()->count();
+    }
+
+    public function hasSharedBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $this->sharedPosts()->where('user_id', $user->id)->exists();
     }
 
     public function media(): HasMany

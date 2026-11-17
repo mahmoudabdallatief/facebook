@@ -10,17 +10,19 @@
             @csrf
 
             <div class="space-y-1">
-                <label for="body" class="block text-sm font-medium text-fb-muted dark:text-zinc-300">{{ __('app.post_placeholder') }}</label>
+                <label for="body" class="block text-sm font-medium text-fb-muted dark:text-zinc-300">{{ $post->isShare() ? __('app.share_placeholder') : __('app.post_placeholder') }}</label>
                 <textarea
                     id="body"
                     name="body"
                     rows="6"
                     class="w-full rounded-lg border border-fb-border bg-white px-3 py-2 text-sm shadow-sm outline-none ring-fb-blue/30 focus:border-fb-blue focus:ring-4 dark:border-zinc-700 dark:bg-zinc-900"
-                    required autofocus>{{ old('body', $post->body) }}</textarea>
+                    autofocus>{{ old('body', $post->body) }}</textarea>
                 @error('body')
                     <p class="text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
-                <p class="text-xs text-fb-muted dark:text-zinc-500">{{ __('app.media_hint') }}</p>
+                @if(!$post->isShare())
+                    <p class="text-xs text-fb-muted dark:text-zinc-500">{{ __('app.media_hint') }}</p>
+                @endif
             </div>
 
             <div>
@@ -31,7 +33,8 @@
                 </select>
             </div>
 
-            @if($post->media->isNotEmpty())
+            @if(!$post->isShare())
+                @if($post->media->isNotEmpty())
                 <div class="space-y-1">
                     <label class="block text-sm font-medium text-fb-muted dark:text-zinc-300 mb-2">{{ __('app.existing_media') }}</label>
                     <div class="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -60,6 +63,7 @@
                 <div id="media-previews" class="space-y-3 mt-3"></div>
                 <p class="text-xs text-fb-muted dark:text-zinc-500 mt-1">{{ __('app.media_hint') }}</p>
             </div>
+            @endif
 
             <div class="pt-2 flex justify-end gap-3">
                 <a href="{{ route('dashboard') }}" class="rounded-lg bg-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">{{ __('app.cancel') }}</a>

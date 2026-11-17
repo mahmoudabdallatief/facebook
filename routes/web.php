@@ -14,6 +14,7 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReactionController;
+use App\Http\Controllers\ShareController;
 use App\Http\Controllers\ThemeController;
 use Illuminate\Support\Facades\Route;
 
@@ -50,6 +51,9 @@ Route::middleware('auth')->group(function (): void {
 
     Route::post('posts/{post}/reactions', [ReactionController::class, 'store'])->name('posts.reactions.store');
     Route::post('comments/{comment}/reactions', [ReactionController::class, 'storeOnComment'])->name('comments.reactions.store');
+
+    Route::get('posts/{post}/shares', [ShareController::class, 'index'])->name('posts.shares.index');
+    Route::post('posts/{post}/shares', [ShareController::class, 'store'])->name('posts.shares.store');
 
     Route::get('posts/{post}/comments', [CommentController::class, 'index'])->name('posts.comments.index');
     Route::post('comments', [CommentController::class, 'store'])->name('comments.store');

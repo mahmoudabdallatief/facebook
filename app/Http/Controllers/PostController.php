@@ -82,6 +82,29 @@ class PostController extends Controller
     {
         $this->authorize('update', $post);
 
+        if ($post->isShare()) {
+            $validated = $request->validate([
+                'body' => ['nullable', 'string', 'max:2000'],
+                'visibility' => ['sometimes', 'in:public,friends'],
+            ]);
+
+            $post->update([
+                'body' => $validated['body'] ?? null,
+                'visibility' => $validated['visibility'] ?? $post->visibility,
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => __('app.post_updated'),
+                    'post' => $post->load(['user', 'originalPost.user', 'originalPost.media']),
+                ]);
+            }
+
+            return redirect()->route('posts.index')
+                ->with('status', __('app.post_updated'));
+        }
+
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:2000'],
             'visibility' => ['sometimes', 'in:public,friends'],
