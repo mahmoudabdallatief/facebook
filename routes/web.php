@@ -11,6 +11,8 @@ use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\FriendController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\MessengerController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReactionController;
@@ -74,6 +76,25 @@ Route::middleware('auth')->group(function (): void {
     Route::post('friends/requests/{friendship}/reject', [FriendController::class, 'reject'])->name('friends.reject');
     Route::post('friends/requests/{friendship}/cancel', [FriendController::class, 'cancel'])->name('friends.cancel');
     Route::delete('friends/{user}', [FriendController::class, 'destroy'])->name('friends.destroy');
+
+    Route::get('messenger', [MessengerController::class, 'index'])->name('messenger.index');
+    Route::get('messenger/search', [MessengerController::class, 'search'])->name('messenger.search');
+    Route::get('messenger/unread-count', [MessengerController::class, 'unreadCount'])->name('messenger.unread-count');
+    Route::post('messenger/start', [MessengerController::class, 'start'])->name('messenger.start');
+    Route::get('messenger/{conversation}', [MessengerController::class, 'show'])->name('messenger.show');
+    Route::get('messenger/{conversation}/messages', [MessageController::class, 'index'])->name('messenger.messages.index');
+
+    Route::prefix('messenger/{conversation}')->group(function (): void {
+        Route::post('messages', [MessageController::class, 'store'])->name('messenger.messages.store');
+        Route::post('read', [MessageController::class, 'markAsRead'])->name('messenger.messages.read');
+        Route::post('typing', [MessengerController::class, 'typing'])->name('messenger.messages.typing');
+        Route::post('presence', [MessengerController::class, 'presence'])->name('messenger.presence');
+        Route::post('presence/leave', [MessengerController::class, 'leavePresence'])->name('messenger.presence.leave');
+    });
+
+    Route::post('messenger/upload', [MessageController::class, 'upload'])->name('messenger.upload');
+
+    Route::get('messenger/conversation-item/{conversation}', [MessengerController::class, 'conversationItem'])->name('messenger.conversation-item');
 
     Route::get('verify-email', EmailVerificationPromptController::class)->name('verification.notice');
     Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)

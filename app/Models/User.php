@@ -25,6 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'avatar',
         'bio',
         'theme',
+        'last_seen_at',
         'password',
     ];
 
@@ -56,6 +57,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_seen_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -134,5 +136,33 @@ class User extends Authenticatable implements MustVerifyEmail
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
+    }
+
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'user_one_id')
+            ->orWhere('user_two_id', $this->id);
+    }
+
+    public function sentMessages(): HasMany
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function unreadMessagesCount(): int
+    {
+        return Message::query()
+            ->whereHas('conversation', function ($q) {
+                $q->where('user_one_id', $this->id)
+                    ->orWhere('user_two_id', $this->id);
+            })
+            ->where('sender_id', '!=', $this->id)
+            ->whereNull('read_at')
+            ->count();
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at && $this->last_seen_at->gt(now()->subMinutes(2));
     }
 }

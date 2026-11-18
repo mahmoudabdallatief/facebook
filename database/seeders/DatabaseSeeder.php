@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Conversation;
 use App\Models\Friendship;
+use App\Models\Message;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -94,6 +96,34 @@ class DatabaseSeeder extends Seeder
                 'user_id' => $user->id,
                 'body' => $sample['body'],
                 'visibility' => $sample['visibility'],
+            ]);
+        }
+
+        // Sample conversations and messages for messenger
+        $me = User::where('email', 'test@example.com')->first();
+        $friends = $users->take(4);
+
+        foreach ($friends as $friend) {
+            $conversation = Conversation::getOrCreate($me, $friend);
+
+            $messages = [
+                ['sender_id' => $me->id, 'content' => 'Hello ' . $friend->name . '! How are you?'],
+                ['sender_id' => $friend->id, 'content' => 'Hi! I am good, thanks. And you?'],
+                ['sender_id' => $me->id, 'content' => 'Doing well. Want to catch up later?'],
+            ];
+
+            foreach ($messages as $index => $msgData) {
+                Message::create([
+                    'conversation_id' => $conversation->id,
+                    'sender_id' => $msgData['sender_id'],
+                    'content' => $msgData['content'],
+                    'type' => 'text',
+                    'read_at' => $index < 2 ? now()->subMinutes(10) : null,
+                ]);
+            }
+
+            $conversation->update([
+                'last_message_at' => $conversation->messages()->latest()->first()->created_at,
             ]);
         }
     }

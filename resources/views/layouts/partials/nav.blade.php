@@ -8,8 +8,23 @@
 
         <div class="flex items-center gap-2 text-sm">
 @auth
-                <a href="{{ route('posts.index') }}" class="rounded-lg px-3 py-1.5 font-medium text-fb-blue hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ __('app.posts') }}</a>
-                <a href="{{ route('friends.index') }}" class="rounded-lg px-3 py-1.5 font-medium text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ __('app.friends') }}</a>
+                <a href="{{ route('posts.index') }}" @class([
+                    'rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('posts.*'),
+                    'text-fb-muted dark:text-zinc-300' => !request()->routeIs('posts.*'),
+                ]) @if(request()->routeIs('posts.*')) aria-current="page" @endif>{{ __('app.posts') }}</a>
+                <a href="{{ route('messenger.index') }}" @class([
+                    'relative rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('messenger.*'),
+                    'text-fb-muted dark:text-zinc-300' => !request()->routeIs('messenger.*'),
+                ]) @if(request()->routeIs('messenger.*')) aria-current="page" @endif>{{ __('messenger.chats') }}
+                    <span id="unread-badge" class="absolute -top-1 -right-1 hidden w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-medium flex items-center justify-center"></span>
+                </a>
+                <a href="{{ route('friends.index') }}" @class([
+                    'rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('friends.*'),
+                    'text-fb-muted dark:text-zinc-300' => !request()->routeIs('friends.*'),
+                ]) @if(request()->routeIs('friends.*')) aria-current="page" @endif>{{ __('app.friends') }}</a>
 @endauth
             <a href="{{ route('locale.switch', $isAr ? 'en' : 'ar') }}" class="rounded-lg px-3 py-1.5 text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ $isAr ? 'EN' : 'ع' }}</a>
             <button type="button" onclick="toggleTheme()" class="rounded-lg px-3 py-1.5 text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="{{ __('app.toggle_theme') }}">◐</button>

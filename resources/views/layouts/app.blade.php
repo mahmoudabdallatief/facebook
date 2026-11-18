@@ -10,9 +10,26 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
     <script>window.__initialTheme = @json(auth()->user() ? auth()->user()->theme : ($theme ?? session('theme', 'light')));</script>
+    <script>
+        window.LARAVEL_USER_ID = @json(auth()->id());
+        window.MESSENGER_TRANSLATIONS = {
+            messenger: {
+                no_more_messages: @json(__('messenger.no_more_messages')),
+                js: @json(__('messenger.js')),
+            },
+        };
+        window.APP_LOCALE = @json(app()->getLocale());
+        window.REVERB_APP_KEY = @json(env('REVERB_APP_KEY'));
+        window.REVERB_HOST = @json(env('REVERB_HOST'));
+        window.REVERB_PORT = @json(env('REVERB_PORT'));
+        window.REVERB_SCHEME = @json(env('REVERB_SCHEME'));
+    </script>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif
+    @auth
+        @vite(['resources/js/messenger.js'])
+    @endauth
     @stack('scripts')
 </head>
 <body class="min-h-screen bg-fb-bg text-fb-text dark:bg-zinc-950 dark:text-zinc-100 font-sans antialiased">

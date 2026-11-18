@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessVideo;
+use App\Models\MessageMedia;
 use App\Models\PostMedia;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,33 +16,55 @@ class ChunkedUploadController extends Controller
 
     private const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
 
+    private const ALLOWED_VIDEO_MIMES = [
+        'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+    ];
+
+    private const ALLOWED_IMAGE_MIMES = [
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    ];
+
     public function initiate(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'filename' => ['required', 'string', 'max:255'],
             'file_size' => ['required', 'integer', 'min:1', 'max:'.self::MAX_FILE_SIZE],
-            'mime_type' => ['required', 'string', 'in:video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska'],
+            'mime_type' => ['required', 'string'],
             'total_chunks' => ['required', 'integer', 'min:1'],
             'chunk_size' => ['sometimes', 'integer', 'min:1', 'max:'.self::CHUNK_SIZE],
+            'target' => ['sometimes', 'string', 'in:post,message'],
         ]);
 
+        $target = $validated['target'] ?? 'post';
         $chunkSize = $validated['chunk_size'] ?? self::CHUNK_SIZE;
         if ((int) ceil($validated['file_size'] / $chunkSize) !== $validated['total_chunks']) {
             return response()->json(['success' => false, 'message' => 'Invalid chunk count'], 422);
         }
 
-        $uploadId = Str::uuid()->toString();
-        $type = 'video';
+        $mimeType = $validated['mime_type'];
+        $isMessage = $target === 'message';
 
-        $media = PostMedia::create([
-            'post_id' => null,
+        if ($isMessage) {
+            $isVideo = str_starts_with($mimeType, 'video/');
+            $allowed = $isVideo ? self::ALLOWED_VIDEO_MIMES : self::ALLOWED_IMAGE_MIMES;
+            if (!in_array($mimeType, $allowed, true)) {
+                return response()->json(['success' => false, 'message' => 'Invalid file type'], 422);
+            }
+        } elseif (!in_array($mimeType, self::ALLOWED_VIDEO_MIMES, true)) {
+            return response()->json(['success' => false, 'message' => 'Invalid file type'], 422);
+        }
+
+        $mediaClass = $isMessage ? MessageMedia::class : PostMedia::class;
+        $type = str_starts_with($mimeType, 'video/') ? 'video' : 'image';
+
+        $attributes = [
             'user_id' => $request->user()->id,
             'type' => $type,
             'disk' => 'public',
             'path' => '',
             'url' => '',
             'order' => 0,
-            'upload_id' => $uploadId,
+            'upload_id' => $uploadId = Str::uuid()->toString(),
             'chunk_size' => $chunkSize,
             'total_chunks' => $validated['total_chunks'],
             'uploaded_chunks' => 0,
@@ -49,9 +72,15 @@ class ChunkedUploadController extends Controller
             'status' => 'uploading',
             'metadata' => [
                 'original_filename' => $validated['filename'],
-                'mime_type' => $validated['mime_type'],
+                'mime_type' => $mimeType,
             ],
-        ]);
+        ];
+
+        if (! $isMessage) {
+            $attributes['post_id'] = null;
+        }
+
+        $media = $mediaClass::create($attributes);
 
         $tempPath = "uploads/chunks/{$uploadId}";
         Storage::disk('public')->makeDirectory($tempPath);
@@ -70,9 +99,13 @@ class ChunkedUploadController extends Controller
             'upload_id' => ['required', 'string', 'uuid'],
             'chunk_index' => ['required', 'integer', 'min:0'],
             'chunk' => ['required', 'file', 'max:'.(self::CHUNK_SIZE / 1024)],
+            'target' => ['sometimes', 'string', 'in:post,message'],
         ]);
 
-        $media = PostMedia::where('upload_id', $validated['upload_id'])->firstOrFail();
+        $target = $validated['target'] ?? 'post';
+        $mediaClass = $target === 'message' ? MessageMedia::class : PostMedia::class;
+
+        $media = $mediaClass::where('upload_id', $validated['upload_id'])->firstOrFail();
         abort_unless($media->user_id === $request->user()->id, 403);
 
         if ($media->status !== 'uploading') {
@@ -91,8 +124,12 @@ class ChunkedUploadController extends Controller
 
         $chunk = $request->file('chunk');
         if ($chunk->getSize() < 1 || $chunk->getSize() > $media->chunk_size) {
-            return response()->json(['success' => false, 'message' => 'Invalid chunk size'], 422);
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid chunk size',
+            ], 422);
         }
+
         $tempPath = "uploads/chunks/{$media->upload_id}/chunk_{$validated['chunk_index']}";
         if (! Storage::disk('public')->exists($tempPath)) {
             $chunk->storeAs(dirname($tempPath), basename($tempPath), 'public');
@@ -102,8 +139,8 @@ class ChunkedUploadController extends Controller
         $media->update(['uploaded_chunks' => $uploadedChunks]);
 
         if ($uploadedChunks >= $media->total_chunks
-            && PostMedia::whereKey($media->id)->where('status', 'uploading')->update(['status' => 'assembling'])) {
-            $this->assembleChunks($media->fresh());
+            && $mediaClass::whereKey($media->id)->where('status', 'uploading')->update(['status' => 'assembling'])) {
+            $this->assembleChunks($media->fresh(), $target);
         }
 
         return response()->json([
@@ -119,9 +156,13 @@ class ChunkedUploadController extends Controller
         $validated = $request->validate([
             'upload_id' => ['required', 'string', 'uuid'],
             'post_id' => ['sometimes', 'integer', 'exists:posts,id'],
+            'target' => ['sometimes', 'string', 'in:post,message'],
         ]);
 
-        $media = PostMedia::where('upload_id', $validated['upload_id'])->firstOrFail();
+        $target = $validated['target'] ?? 'post';
+        $mediaClass = $target === 'message' ? MessageMedia::class : PostMedia::class;
+
+        $media = $mediaClass::where('upload_id', $validated['upload_id'])->firstOrFail();
         abort_unless($media->user_id === $request->user()->id, 403);
 
         if ($media->status !== 'completed') {
@@ -131,14 +172,16 @@ class ChunkedUploadController extends Controller
             ], 400);
         }
 
-        if ($validated['post_id'] ?? null) {
-            $post = \App\Models\Post::findOrFail($validated['post_id']);
-            abort_unless($post->user_id === $request->user()->id, 403);
-            $media->update([
-                'post_id' => $post->id,
-                'order' => ($post->media()->max('order') ?? 0) + 1,
-            ]);
+        if (! ($validated['post_id'] ?? null)) {
+            return response()->json(['success' => true, 'media' => $media]);
         }
+
+        $post = \App\Models\Post::findOrFail($validated['post_id']);
+        abort_unless($post->user_id === $request->user()->id, 403);
+        $media->update([
+            'post_id' => $post->id,
+            'order' => ($post->media()->max('order') ?? 0) + 1,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -150,9 +193,13 @@ class ChunkedUploadController extends Controller
     {
         $validated = $request->validate([
             'upload_id' => ['required', 'string', 'uuid'],
+            'target' => ['sometimes', 'string', 'in:post,message'],
         ]);
 
-        $media = PostMedia::where('upload_id', $validated['upload_id'])->firstOrFail();
+        $target = $validated['target'] ?? 'post';
+        $mediaClass = $target === 'message' ? MessageMedia::class : PostMedia::class;
+
+        $media = $mediaClass::where('upload_id', $validated['upload_id'])->firstOrFail();
         abort_unless($media->user_id === $request->user()->id, 403);
 
         return response()->json([
@@ -169,9 +216,13 @@ class ChunkedUploadController extends Controller
     {
         $validated = $request->validate([
             'upload_id' => ['required', 'string', 'uuid'],
+            'target' => ['sometimes', 'string', 'in:post,message'],
         ]);
 
-        $media = PostMedia::where('upload_id', $validated['upload_id'])->firstOrFail();
+        $target = $validated['target'] ?? 'post';
+        $mediaClass = $target === 'message' ? MessageMedia::class : PostMedia::class;
+
+        $media = $mediaClass::where('upload_id', $validated['upload_id'])->firstOrFail();
         abort_unless($media->user_id === $request->user()->id, 403);
 
         $this->cleanupTempFiles($media);
@@ -183,12 +234,18 @@ class ChunkedUploadController extends Controller
         ]);
     }
 
-    private function assembleChunks(PostMedia $media): void
+    private function assembleChunks($media, string $target): void
     {
         $tempDir = "uploads/chunks/{$media->upload_id}";
-        $filename = $media->metadata['original_filename'] ?? 'video.mp4';
-        $extension = preg_replace('/[^a-zA-Z0-9]/', '', pathinfo($filename, PATHINFO_EXTENSION)) ?: 'mp4';
-        $finalPath = "posts/{$media->upload_id}/".Str::slug(pathinfo($filename, PATHINFO_FILENAME)).'.'.$extension;
+        $filename = $media->metadata['original_filename'] ?? ($target === 'message' ? 'file' : 'video.mp4');
+        $extension = preg_replace('/[^a-zA-Z0-9]/', '', pathinfo($filename, PATHINFO_EXTENSION)) ?: ($target === 'message' ? 'bin' : 'mp4');
+        $slug = Str::slug(pathinfo($filename, PATHINFO_FILENAME));
+
+        if ($target === 'message') {
+            $finalPath = "messages/{$media->user_id}/{$slug}_{$media->upload_id}.{$extension}";
+        } else {
+            $finalPath = "posts/{$media->upload_id}/{$slug}.{$extension}";
+        }
 
         $chunks = [];
         for ($i = 0; $i < $media->total_chunks; $i++) {
@@ -202,8 +259,9 @@ class ChunkedUploadController extends Controller
         }
 
         Storage::disk('public')->makeDirectory(dirname($finalPath));
-        $target = fopen(Storage::disk('public')->path($finalPath), 'wb');
-        if ($target === false) {
+        $targetPath = Storage::disk('public')->path($finalPath);
+        $fp = fopen($targetPath, 'wb');
+        if ($fp === false) {
             $media->update(['status' => 'failed']);
             return;
         }
@@ -211,14 +269,14 @@ class ChunkedUploadController extends Controller
         foreach ($chunks as $chunkPath) {
             $source = Storage::disk('public')->readStream($chunkPath);
             if ($source === false) {
-                fclose($target);
+                fclose($fp);
                 $media->update(['status' => 'failed']);
                 return;
             }
-            stream_copy_to_stream($source, $target);
+            stream_copy_to_stream($source, $fp);
             fclose($source);
         }
-        fclose($target);
+        fclose($fp);
 
         $finalFile = Storage::disk('public')->path($finalPath);
         if (filesize($finalFile) !== $media->total_size) {
@@ -229,9 +287,22 @@ class ChunkedUploadController extends Controller
         }
 
         $mimeType = mime_content_type($finalFile);
-        if (! is_string($mimeType) || ! str_starts_with($mimeType, 'video/')) {
+        $allowed = $target === 'message'
+            ? array_merge(self::ALLOWED_IMAGE_MIMES, self::ALLOWED_VIDEO_MIMES)
+            : self::ALLOWED_VIDEO_MIMES;
+        if (! is_string($mimeType) || ! in_array($mimeType, $allowed, true)) {
             Storage::disk('public')->delete($finalPath);
             $media->update(['status' => 'failed']);
+            $this->cleanupTempFiles($media);
+            return;
+        }
+
+        if ($target === 'message') {
+            $media->update([
+                'path' => $finalPath,
+                'url' => 'storage/'.$finalPath,
+                'status' => 'completed',
+            ]);
             $this->cleanupTempFiles($media);
             return;
         }
@@ -245,7 +316,7 @@ class ChunkedUploadController extends Controller
         ProcessVideo::dispatch($media);
     }
 
-    private function cleanupTempFiles(PostMedia $media): void
+    private function cleanupTempFiles($media): void
     {
         $tempDir = "uploads/chunks/{$media->upload_id}";
         Storage::disk('public')->deleteDirectory($tempDir);

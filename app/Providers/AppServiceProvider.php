@@ -8,7 +8,9 @@ use App\Policies\CommentPolicy;
 use App\Policies\PostPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\URL;
@@ -27,6 +29,22 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Post::class, PostPolicy::class);
         Gate::policy(Comment::class, CommentPolicy::class);
+
+        Broadcast::routes(['middleware' => ['auth']]);
+
+        Broadcast::channel('user.{userId}', function ($user, int $userId) {
+            return $user->id === $userId;
+        });
+
+        Broadcast::channel('conversation.{conversationId}', function ($user, int $conversationId) {
+            return \App\Models\Conversation::query()
+                ->where('id', $conversationId)
+                ->where(function ($q) use ($user) {
+                    $q->where('user_one_id', $user->id)
+                        ->orWhere('user_two_id', $user->id);
+                })
+                ->exists();
+        });
 
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
