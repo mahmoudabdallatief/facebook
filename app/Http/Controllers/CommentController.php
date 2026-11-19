@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Post;
+use App\Notifications\ActivityNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -42,6 +43,16 @@ class CommentController extends Controller
         ]);
 
         $comment->load('user');
+
+        $auth = $request->user();
+        if (! empty($validated['parent_id'])) {
+            $parent = Comment::find($validated['parent_id']);
+            if ($parent && $parent->user_id !== $auth->id) {
+                $parent->user->notify(new ActivityNotification('comment_reply', ['user_id' => $auth->id, 'user_name' => $auth->name, 'comment_id' => $parent->id, 'reply_id' => $comment->id, 'post_id' => $post->id]));
+            }
+        } else {
+            $post->user->notify(new ActivityNotification('post_comment', ['user_id' => $auth->id, 'user_name' => $auth->name, 'post_id' => $post->id, 'comment_id' => $comment->id]));
+        }
 
         return response()->json([
             'success' => true,

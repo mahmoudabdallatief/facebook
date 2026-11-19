@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use App\Notifications\ActivityNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,18 +34,6 @@ class ShareController extends Controller
         $user = $request->user();
         $isOwner = $rootOriginal->user_id === $user->id;
 
-        if (! $isOwner && $rootOriginal->hasSharedBy($user)) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => __('app.already_shared'),
-                ], 422);
-            }
-
-            return redirect()->back()
-                ->with('error', __('app.already_shared'));
-        }
-
         $validated = $request->validate([
             'body' => ['nullable', 'string', 'max:2000'],
             'visibility' => ['sometimes', 'in:public,friends'],
@@ -57,6 +46,10 @@ class ShareController extends Controller
         ]);
 
         $share->load(['user', 'originalPost.user', 'originalPost.media']);
+
+        if ($rootOriginal->user_id !== $user->id) {
+            $rootOriginal->user->notify(new ActivityNotification('post_share', ['user_id' => $user->id, 'user_name' => $user->name, 'post_id' => $share->id]));
+        }
 
         if ($request->expectsJson()) {
             return response()->json([

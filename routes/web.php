@@ -12,6 +12,7 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\FriendController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MessengerController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
@@ -78,6 +79,10 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('friends/{user}', [FriendController::class, 'destroy'])->name('friends.destroy');
 
     Route::get('messenger', [MessengerController::class, 'index'])->name('messenger.index');
+Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+Route::get('notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::get('messenger/search', [MessengerController::class, 'search'])->name('messenger.search');
     Route::get('messenger/unread-count', [MessengerController::class, 'unreadCount'])->name('messenger.unread-count');
     Route::post('messenger/start', [MessengerController::class, 'start'])->name('messenger.start');

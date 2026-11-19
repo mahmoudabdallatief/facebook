@@ -6,6 +6,7 @@ use Illuminate\Http\{RedirectResponse, Request};
 use Illuminate\View\View;
 
 use App\Models\{Friendship, PostMedia, User};
+use App\Notifications\ActivityNotification;
 
 class FriendController extends Controller
 {
@@ -82,6 +83,8 @@ class FriendController extends Controller
             'status' => 'pending',
         ]);
 
+        $user->notify(new ActivityNotification('friend_request', ['user_id' => $auth->id, 'user_name' => $auth->name]));
+
         return back()->with('status', __('app.friend_request_sent'));
     }
 
@@ -92,6 +95,8 @@ class FriendController extends Controller
             abort(403);
         }
         $friendship->update(['status' => 'accepted', 'accepted_at' => now()]);
+
+        $friendship->user->notify(new ActivityNotification('friend_accepted', ['user_id' => $auth->id, 'user_name' => $auth->name]));
 
         return back()->with('status', __('app.friend_request_accepted'));
     }

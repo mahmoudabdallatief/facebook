@@ -25,6 +25,13 @@
                     'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('friends.*'),
                     'text-fb-muted dark:text-zinc-300' => !request()->routeIs('friends.*'),
                 ]) @if(request()->routeIs('friends.*')) aria-current="page" @endif>{{ __('app.friends') }}</a>
+                <a href="{{ route('notifications.index') }}" @class([
+                    'relative rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('notifications.*'),
+                    'text-fb-muted dark:text-zinc-300' => !request()->routeIs('notifications.*'),
+                ]) @if(request()->routeIs('notifications.*')) aria-current="page" @endif>{{ __('app.notifications') }}
+                    <span id="notif-badge" class="absolute -top-1 -right-1 hidden w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"><span id="notif-count">0</span></span>
+                </a>
 @endauth
             <a href="{{ route('locale.switch', $isAr ? 'en' : 'ar') }}" class="rounded-lg px-3 py-1.5 text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ $isAr ? 'EN' : 'ع' }}</a>
             <button type="button" onclick="toggleTheme()" class="rounded-lg px-3 py-1.5 text-fb-muted hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="{{ __('app.toggle_theme') }}">◐</button>
@@ -49,3 +56,22 @@
         </div>
     </div>
 </nav>
+
+<script>
+(function(){
+    var badge = document.getElementById('notif-badge');
+    var countEl = document.getElementById('notif-count');
+    if(!badge || !countEl) return;
+    function update(){
+        fetch('{{ route('notifications.unread-count') }}')
+            .then(function(r){ return r.json(); })
+            .then(function(data){
+                var c = parseInt(data.count || 0, 10);
+                countEl.textContent = c > 9 ? '9+' : c;
+                badge.classList.toggle('hidden', c <= 0);
+            });
+    }
+    update();
+    setInterval(update, 30000);
+})();
+</script>

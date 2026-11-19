@@ -61,15 +61,13 @@ $me = auth()->user();
                     </button>
                 @endif
 
-                @if(!$depth || $depth < 3)
-                    <button
-                        type="button"
-                        onclick="toggleReplyForm({{ $comment->id }})"
-                        class="text-xs text-fb-blue hover:text-fb-blue-hover dark:text-zinc-300 dark:hover:text-zinc-100"
-                    >
-                        {{ __('app.reply') }}
-                    </button>
-                @endif
+                <button
+                    type="button"
+                    onclick="toggleReplyForm({{ $comment->id }})"
+                    class="text-xs text-fb-blue hover:text-fb-blue-hover dark:text-zinc-300 dark:hover:text-zinc-100"
+                >
+                    {{ __('app.reply') }}
+                </button>
 
             </div>
 

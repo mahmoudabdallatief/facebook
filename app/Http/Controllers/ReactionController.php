@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Comment;
 use App\Models\Post;
 use App\Models\Reaction;
+use App\Notifications\ActivityNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,6 +36,10 @@ class ReactionController extends Controller
                 'reaction_type' => $reactionType,
             ]);
             $action = 'added';
+
+            if ($post->user_id !== $user->id) {
+                $post->user->notify(new ActivityNotification('post_reaction', ['user_id' => $user->id, 'user_name' => $user->name, 'post_id' => $post->id, 'reaction_type' => $reactionType]));
+            }
         }
 
         return response()->json([
@@ -72,6 +77,10 @@ class ReactionController extends Controller
                 'reaction_type' => $reactionType,
             ]);
             $action = 'added';
+
+            if ($comment->user_id !== $user->id) {
+                $comment->user->notify(new ActivityNotification('comment_reaction', ['user_id' => $user->id, 'user_name' => $user->name, 'comment_id' => $comment->id, 'reaction_type' => $reactionType, 'post_id' => $comment->post_id]));
+            }
         }
 
         return response()->json([
