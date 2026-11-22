@@ -8,7 +8,7 @@ class NotificationController extends Controller
 {
     public function index(Request $request)
     {
-        $notifications = $request->user()->notifications()->latest()->paginate(20);
+        $notifications = $request->user()->notifications()->latest()->take(50)->get();
         return view('notifications.index', compact('notifications'));
     }
 
@@ -25,7 +25,20 @@ class NotificationController extends Controller
 
     public function markRead(Request $request, string $id)
     {
-        $request->user()->notifications()->where('id', $id)->update(['read_at' => now()]);
+        $notification = $request->user()->notifications()->where('id', $id)->first();
+
+        if ($notification) {
+            $postId = $notification->data['post_id'] ?? null;
+
+            if ($postId) {
+                $request->user()->notifications()
+                    ->where('read_at', null)
+                    ->whereJsonContains('data', ['post_id' => $postId])
+                    ->update(['read_at' => now()]);
+            } else {
+                $request->user()->notifications()->where('id', $id)->update(['read_at' => now()]);
+            }
+        }
 
         $url = $request->query('url');
         return $url ? redirect($url) : back();

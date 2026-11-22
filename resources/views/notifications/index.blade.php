@@ -60,6 +60,5 @@
                 <p class="text-gray-500 dark:text-gray-400">{{ __('app.no_notifications') }}</p>
             @endforelse
         </div>
-        {{ $notifications->links() }}
     </div>
 @endsection
