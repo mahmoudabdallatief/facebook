@@ -3,12 +3,20 @@
 namespace App\Providers;
 
 use App\Models\Comment;
+use App\Models\Conversation;
+use App\Models\Group;
+use App\Models\GroupMember;
+use App\Models\Page;
+use App\Models\PageMember;
 use App\Models\Post;
 use App\Policies\CommentPolicy;
+use App\Policies\GroupMemberPolicy;
+use App\Policies\GroupPolicy;
+use App\Policies\PageMemberPolicy;
+use App\Policies\PagePolicy;
 use App\Policies\PostPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Gate;
@@ -29,6 +37,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Post::class, PostPolicy::class);
         Gate::policy(Comment::class, CommentPolicy::class);
+        Gate::policy(Page::class, PagePolicy::class);
+        Gate::policy(PageMember::class, PageMemberPolicy::class);
+        Gate::policy(Group::class, GroupPolicy::class);
+        Gate::policy(GroupMember::class, GroupMemberPolicy::class);
 
         Broadcast::routes(['middleware' => ['auth']]);
 
@@ -37,7 +49,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Broadcast::channel('conversation.{conversationId}', function ($user, int $conversationId) {
-            return \App\Models\Conversation::query()
+            return Conversation::query()
                 ->where('id', $conversationId)
                 ->where(function ($q) use ($user) {
                     $q->where('user_one_id', $user->id)

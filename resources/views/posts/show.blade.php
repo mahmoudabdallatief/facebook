@@ -12,6 +12,6 @@
         </a>
     </div>
 
-    <x-post :post="$post" />
+    <x-post-group-page :post="$post" />
 </div>
 @endsection

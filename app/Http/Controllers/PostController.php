@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class PostController extends Controller
@@ -39,10 +40,11 @@ class PostController extends Controller
             'body' => ['required', 'string', 'max:2000'],
             'visibility' => ['sometimes', 'in:public,friends'],
             'media' => ['sometimes', 'array', 'max:10'],
-            'media.*' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,gif,mp4,mov,webm', 'max:51200'],
+            'media.*' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,gif,mp4,mov,webm,avi,mkv', 'max:2097152'],
             'media_ids' => ['sometimes', 'array', 'max:10'],
             'media_ids.*' => ['integer', 'exists:post_media,id'],
         ]);
+        $this->validateMediaLimit($request, $validated);
 
         $post = $request->user()->posts()->create([
             'body' => $validated['body'],
@@ -109,12 +111,13 @@ class PostController extends Controller
             'body' => ['required', 'string', 'max:2000'],
             'visibility' => ['sometimes', 'in:public,friends'],
             'media' => ['sometimes', 'array', 'max:10'],
-            'media.*' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,gif,mp4,mov,webm', 'max:51200'],
+            'media.*' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,gif,mp4,mov,webm,avi,mkv', 'max:2097152'],
             'media_ids' => ['sometimes', 'array', 'max:10'],
             'media_ids.*' => ['integer', 'exists:post_media,id'],
-            'keep_media' => ['sometimes', 'array'],
+            'keep_media' => ['sometimes', 'array', 'max:10'],
             'keep_media.*' => ['integer', 'min:1'],
         ]);
+        $this->validateMediaLimit($request, $validated, $post);
 
         $post->update([
             'body' => $validated['body'],
@@ -218,6 +221,7 @@ class PostController extends Controller
 
         PostMedia::whereIn('id', $mediaIds)
             ->whereNull('post_id')
+            ->where('user_id', $request->user()->id)
             ->where('status', 'completed')
             ->get()
             ->each(function (PostMedia $media) use ($post) {
@@ -229,5 +233,22 @@ class PostController extends Controller
                     ]);
                 }
             });
+    }
+
+    private function validateMediaLimit(Request $request, array $validated, ?Post $post = null): void
+    {
+        $mediaIds = array_values(array_unique($validated['media_ids'] ?? []));
+        if ($mediaIds && PostMedia::whereIn('id', $mediaIds)->where('user_id', $request->user()->id)->whereNull('post_id')->where('status', 'completed')->count() !== count($mediaIds)) {
+            throw ValidationException::withMessages(['media' => __('app.upload_invalid_selection')]);
+        }
+
+        $newCount = count($request->file('media', [])) + count($mediaIds);
+        $keptCount = $post
+            ? $post->media()->whereIn('id', $validated['keep_media'] ?? [])->count()
+            : 0;
+
+        if ($newCount + $keptCount > 10) {
+            throw ValidationException::withMessages(['media' => __('app.upload_max_files')]);
+        }
     }
 }

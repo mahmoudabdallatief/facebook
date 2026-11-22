@@ -19,11 +19,27 @@ class PostPolicy
 
     public function update(User $user, Post $post): bool
     {
-        return $user->id === $post->user_id;
+        if ($post->isPagePost()) {
+            return $post->page?->canManage($user) ?? false;
+        }
+
+        if ($user->id === $post->user_id) {
+            return true;
+        }
+
+        return false;
     }
 
     public function delete(User $user, Post $post): bool
     {
-        return $user->id === $post->user_id;
+        if ($post->isPagePost()) {
+            return $post->page?->canManage($user) ?? false;
+        }
+
+        if ($user->id === $post->user_id) {
+            return true;
+        }
+
+        return false;
     }
 }

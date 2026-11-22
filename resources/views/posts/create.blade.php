@@ -35,6 +35,7 @@
                 <label for="media" class="block text-sm font-medium text-fb-muted dark:text-zinc-300 mb-2">{{ __('app.add_media') }}</label>
                 <input type="file" id="media" name="media[]" multiple accept="image/*,video/*" class="w-full p-2 rounded-lg border border-fb-border bg-white text-sm dark:border-zinc-700 dark:bg-zinc-900">
                 <p class="text-xs text-fb-muted dark:text-zinc-500 mt-1">{{ __('app.media_hint') }}</p>
+                @error('media')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
 
             <div class="pt-2 flex justify-end gap-3">

@@ -12,7 +12,8 @@ use Illuminate\Support\Str;
 
 class ChunkedUploadController extends Controller
 {
-    private const CHUNK_SIZE = 5 * 1024 * 1024;
+    // Keep chunks below common PHP upload_max_filesize defaults.
+    private const CHUNK_SIZE = 1 * 1024 * 1024;
 
     private const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
 
@@ -50,7 +51,7 @@ class ChunkedUploadController extends Controller
             if (!in_array($mimeType, $allowed, true)) {
                 return response()->json(['success' => false, 'message' => 'Invalid file type'], 422);
             }
-        } elseif (!in_array($mimeType, self::ALLOWED_VIDEO_MIMES, true)) {
+        } elseif (!in_array($mimeType, array_merge(self::ALLOWED_VIDEO_MIMES, self::ALLOWED_IMAGE_MIMES), true)) {
             return response()->json(['success' => false, 'message' => 'Invalid file type'], 422);
         }
 
@@ -224,8 +225,13 @@ class ChunkedUploadController extends Controller
 
         $media = $mediaClass::where('upload_id', $validated['upload_id'])->firstOrFail();
         abort_unless($media->user_id === $request->user()->id, 403);
+        abort_if($target === 'post' && $media->post_id !== null, 409);
+        abort_if($target === 'message' && $media->message_id !== null, 409);
 
         $this->cleanupTempFiles($media);
+        if ($media->status === 'completed' && $media->path) {
+            Storage::disk($media->disk)->delete($media->path);
+        }
         $media->delete();
 
         return response()->json([
@@ -287,9 +293,7 @@ class ChunkedUploadController extends Controller
         }
 
         $mimeType = mime_content_type($finalFile);
-        $allowed = $target === 'message'
-            ? array_merge(self::ALLOWED_IMAGE_MIMES, self::ALLOWED_VIDEO_MIMES)
-            : self::ALLOWED_VIDEO_MIMES;
+        $allowed = array_merge(self::ALLOWED_IMAGE_MIMES, self::ALLOWED_VIDEO_MIMES);
         if (! is_string($mimeType) || ! in_array($mimeType, $allowed, true)) {
             Storage::disk('public')->delete($finalPath);
             $media->update(['status' => 'failed']);
@@ -313,7 +317,9 @@ class ChunkedUploadController extends Controller
             'url' => 'storage/'.$finalPath,
             'status' => 'completed',
         ]);
-        ProcessVideo::dispatch($media);
+        if ($media->type === 'video') {
+            ProcessVideo::dispatch($media);
+        }
     }
 
     private function cleanupTempFiles($media): void

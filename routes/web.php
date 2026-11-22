@@ -10,10 +10,16 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\FriendController;
+use App\Http\Controllers\GroupController;
+use App\Http\Controllers\GroupMemberController;
+use App\Http\Controllers\GroupPostController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessengerController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\MessageController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\PageMemberController;
+use App\Http\Controllers\PagePostController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReactionController;
@@ -63,6 +69,55 @@ Route::middleware('auth')->group(function (): void {
     Route::match(['put', 'patch'], 'comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
     Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
+    Route::prefix('pages')->name('pages.')->group(function (): void {
+        Route::get('/', [PageController::class, 'index'])->name('index');
+        Route::get('/create', [PageController::class, 'create'])->name('create');
+        Route::post('/', [PageController::class, 'store'])->name('store');
+        Route::get('/{page}', [PageController::class, 'show'])->name('show');
+        Route::get('/{page}/edit', [PageController::class, 'edit'])->name('edit');
+        Route::match(['put', 'patch'], '/{page}', [PageController::class, 'update'])->name('update');
+        Route::delete('/{page}', [PageController::class, 'destroy'])->name('destroy');
+
+        Route::get('/{page}/members', [PageMemberController::class, 'index'])->name('members.index');
+        Route::post('/{page}/members', [PageMemberController::class, 'store'])->name('members.join');
+        Route::post('/{page}/leave', [PageMemberController::class, 'destroy'])->name('members.leave');
+        Route::patch('/{page}/members/{user}', [PageMemberController::class, 'update'])->name('members.update');
+        Route::delete('/{page}/members/{user}', [PageMemberController::class, 'remove'])->name('members.remove');
+
+        Route::get('/{page}/posts', [PagePostController::class, 'index'])->name('posts.index');
+        Route::get('/{page}/posts/create', [PagePostController::class, 'create'])->name('posts.create');
+        Route::post('/{page}/posts', [PagePostController::class, 'store'])->name('posts.store');
+        Route::get('/{page}/posts/{post}', [PagePostController::class, 'show'])->name('posts.show');
+        Route::get('/{page}/posts/{post}/edit', [PagePostController::class, 'edit'])->name('posts.edit');
+        Route::match(['put', 'patch'], '/{page}/posts/{post}', [PagePostController::class, 'update'])->name('posts.update');
+        Route::delete('/{page}/posts/{post}', [PagePostController::class, 'destroy'])->name('posts.destroy');
+    });
+
+    Route::prefix('groups')->name('groups.')->group(function (): void {
+        Route::get('/', [GroupController::class, 'index'])->name('index');
+        Route::get('/create', [GroupController::class, 'create'])->name('create');
+        Route::post('/', [GroupController::class, 'store'])->name('store');
+        Route::get('/{group}', [GroupController::class, 'show'])->name('show');
+        Route::get('/{group}/edit', [GroupController::class, 'edit'])->name('edit');
+        Route::match(['put', 'patch'], '/{group}', [GroupController::class, 'update'])->name('update');
+        Route::delete('/{group}', [GroupController::class, 'destroy'])->name('destroy');
+
+        Route::get('/{group}/members', [GroupMemberController::class, 'index'])->name('members.index');
+        Route::post('/{group}/members', [GroupMemberController::class, 'store'])->name('members.join');
+        Route::post('/{group}/leave', [GroupMemberController::class, 'destroy'])->name('members.leave');
+        Route::patch('/{group}/members/{user}', [GroupMemberController::class, 'update'])->name('members.update');
+        Route::delete('/{group}/members/{user}', [GroupMemberController::class, 'remove'])->name('members.remove');
+
+        Route::get('/{group}/posts', [GroupPostController::class, 'index'])->name('posts.index');
+        Route::get('/{group}/posts/create', [GroupPostController::class, 'create'])->name('posts.create');
+        Route::post('/{group}/posts', [GroupPostController::class, 'store'])->name('posts.store');
+        Route::get('/{group}/posts/{post}', [GroupPostController::class, 'show'])->name('posts.show');
+        Route::post('/{group}/posts/{post}/shares', [ShareController::class, 'storeInGroup'])->name('posts.shares.store');
+        Route::get('/{group}/posts/{post}/edit', [GroupPostController::class, 'edit'])->name('posts.edit');
+        Route::match(['put', 'patch'], '/{group}/posts/{post}', [GroupPostController::class, 'update'])->name('posts.update');
+        Route::delete('/{group}/posts/{post}', [GroupPostController::class, 'destroy'])->name('posts.destroy');
+    });
+
     Route::prefix('uploads')->group(function (): void {
         Route::post('initiate', [ChunkedUploadController::class, 'initiate'])->name('uploads.initiate');
         Route::post('chunk', [ChunkedUploadController::class, 'uploadChunk'])->name('uploads.chunk');
@@ -79,10 +134,10 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('friends/{user}', [FriendController::class, 'destroy'])->name('friends.destroy');
 
     Route::get('messenger', [MessengerController::class, 'index'])->name('messenger.index');
-Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
-Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
-Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
-Route::get('notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+    Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::get('notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::get('messenger/search', [MessengerController::class, 'search'])->name('messenger.search');
     Route::get('messenger/unread-count', [MessengerController::class, 'unreadCount'])->name('messenger.unread-count');
     Route::post('messenger/start', [MessengerController::class, 'start'])->name('messenger.start');

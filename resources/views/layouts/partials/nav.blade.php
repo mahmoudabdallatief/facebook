@@ -1,5 +1,5 @@
 @php($isAr = app()->getLocale() === 'ar')
-<nav class="sticky top-0 z-40 border-b border-fb-border bg-fb-surface/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
+<nav class="fixed inset-x-0 top-0 z-40 border-b border-fb-border bg-fb-surface/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
     <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2">
         <a href="{{ route('home') }}" class="flex items-center gap-2">
             <img src="{{ asset('images/facebook-logo.svg') }}" alt="{{ __('app.name') }}" class="h-9 w-9" width="36" height="36">
@@ -13,6 +13,16 @@
                     'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('posts.*'),
                     'text-fb-muted dark:text-zinc-300' => !request()->routeIs('posts.*'),
                 ]) @if(request()->routeIs('posts.*')) aria-current="page" @endif>{{ __('app.posts') }}</a>
+                <a href="{{ route('pages.index') }}" @class([
+                    'rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('pages.*'),
+                    'text-fb-muted dark:text-zinc-300' => !request()->routeIs('pages.*'),
+                ]) @if(request()->routeIs('pages.*')) aria-current="page" @endif>{{ __('app.pages') }}</a>
+                <a href="{{ route('groups.index') }}" @class([
+                    'rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('groups.*'),
+                    'text-fb-muted dark:text-zinc-300' => !request()->routeIs('groups.*'),
+                ]) @if(request()->routeIs('groups.*')) aria-current="page" @endif>{{ __('app.groups') }}</a>
                 <a href="{{ route('messenger.index') }}" @class([
                     'relative rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
                     'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('messenger.*'),

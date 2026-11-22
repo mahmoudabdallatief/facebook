@@ -1,12 +1,25 @@
-const CHUNK_SIZE = 5 * 1024 * 1024;
-const MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024;
+const CHUNK_SIZE = 1024 * 1024;
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+const MAX_FILES = 10;
 const CHUNK_CONCURRENCY = 3;
 
-const routes = {
+const routes = window.postUploadRoutes || {
     initiate: '/uploads/initiate',
     chunk: '/uploads/chunk',
     status: '/uploads/status',
     cancel: '/uploads/cancel',
+};
+
+const messages = window.POST_UPLOAD_TEXT || {
+    maxFiles: 'A post can contain up to 10 photos or videos.',
+    maxSize: 'Each file can be up to 2 GB.',
+    invalidType: 'Choose a supported photo or video.',
+    wait: 'Wait for uploads to finish before publishing.',
+    failed: 'Remove files that failed to upload, then try again.',
+    waiting: 'Waiting to upload',
+    uploading: 'Uploading :percent%',
+    complete: 'Upload complete',
+    remove: 'Remove file',
 };
 
 class ChunkedUploader {
@@ -27,23 +40,25 @@ class ChunkedUploader {
         const response = await fetch(url, options);
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.success) {
-            throw new Error(result.message || 'تعذر رفع الملف. حاول مرة أخرى.');
+            throw new Error(result.message || 'Upload failed. Please try again.');
         }
         return result;
     }
 
     async upload(file, preview) {
-        let chunkSize = CHUNK_SIZE;
-        let totalChunks = Math.ceil(file.size / chunkSize);
+        const mimeType = mimeForFile(file);
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         const init = await this.request(routes.initiate, {
-            method: 'POST', headers: this.headers(true),
+            method: 'POST',
+            headers: this.headers(true),
             body: JSON.stringify({
-                filename: file.name, file_size: file.size, mime_type: file.type,
-                total_chunks: totalChunks, chunk_size: chunkSize,
+                filename: file.name,
+                file_size: file.size,
+                mime_type: mimeType,
+                total_chunks: totalChunks,
+                chunk_size: CHUNK_SIZE,
             }),
         });
-        chunkSize = init.chunk_size;
-        totalChunks = Math.ceil(file.size / chunkSize);
 
         let completed = 0;
         const workers = Array.from({ length: Math.min(CHUNK_CONCURRENCY, totalChunks) }, async (_, worker) => {
@@ -51,7 +66,7 @@ class ChunkedUploader {
                 const data = new FormData();
                 data.append('upload_id', init.upload_id);
                 data.append('chunk_index', index);
-                data.append('chunk', file.slice(index * chunkSize, Math.min((index + 1) * chunkSize, file.size)), `${file.name}.part`);
+                data.append('chunk', file.slice(index * CHUNK_SIZE, Math.min((index + 1) * CHUNK_SIZE, file.size)), `${file.name}.part`);
                 await this.request(routes.chunk, { method: 'POST', headers: this.headers(), body: data });
                 completed++;
                 this.onProgress(preview, completed / totalChunks * 100);
@@ -63,15 +78,16 @@ class ChunkedUploader {
             let status;
             do {
                 status = await this.request(`${routes.status}?upload_id=${encodeURIComponent(init.upload_id)}`, { headers: this.headers() });
-                if (status.status === 'failed') throw new Error('فشل تجهيز الفيديو بعد رفعه.');
+                if (status.status === 'failed') throw new Error(status.media?.metadata?.error || 'Upload processing failed.');
                 if (status.status !== 'completed') await new Promise(resolve => setTimeout(resolve, 700));
             } while (status.status !== 'completed');
-            preview.dataset.mediaId = status.media.id;
-            preview.querySelector('.upload-status').textContent = 'اكتمل رفع الفيديو';
-            return status.media.id;
+
+            preview.querySelector('.upload-status').textContent = messages.complete;
+            return { mediaId: status.media.id, uploadId: init.upload_id };
         } catch (error) {
             await fetch(routes.cancel, {
-                method: 'DELETE', headers: this.headers(true),
+                method: 'DELETE',
+                headers: this.headers(true),
                 body: JSON.stringify({ upload_id: init.upload_id }),
             }).catch(() => {});
             throw error;
@@ -84,99 +100,156 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = input?.closest('form');
     if (!input || !form) return;
 
-    const previews = document.createElement('div');
-    previews.id = 'media-previews';
-    previews.className = 'mt-3 space-y-2';
-    input.parentNode.appendChild(previews);
+    let previews = form.querySelector('#media-previews');
+    if (!previews) {
+        previews = document.createElement('div');
+        previews.id = 'media-previews';
+        previews.className = 'mt-3 space-y-2';
+        form.appendChild(previews);
+    }
 
-    const uploadedIds = document.createElement('div');
-    uploadedIds.id = 'uploaded-media-ids';
-    form.appendChild(uploadedIds);
+    let uploadedIds = form.querySelector('#uploaded-media-ids');
+    if (!uploadedIds) {
+        uploadedIds = document.createElement('div');
+        uploadedIds.id = 'uploaded-media-ids';
+        form.appendChild(uploadedIds);
+    }
+
     let uploading = false;
-
     input.addEventListener('change', async () => {
-        previews.replaceChildren();
-        uploadedIds.replaceChildren();
         const selected = Array.from(input.files || []);
-        const videos = selected.filter(file => file.type.startsWith('video/'));
-        const images = selected.filter(file => file.type.startsWith('image/'));
+        input.value = '';
+        if (!selected.length) return;
 
-        // Keep images in the regular post request; video bytes use chunked requests.
-        const imageFiles = new DataTransfer();
-        images.forEach(file => imageFiles.items.add(file));
-        input.files = imageFiles.files;
-        uploading = videos.length > 0;
-
-        if (selected.length > 10) {
-            showError(previews, 'يمكنك إضافة 10 ملفات كحد أقصى للبوست.');
-            input.value = '';
-            uploading = false;
+        const keptFiles = form.querySelectorAll('input[name="keep_media[]"]:checked').length;
+        const currentCount = uploadedIds.querySelectorAll('input[name="media_ids[]"]').length + keptFiles;
+        if (currentCount + selected.length > MAX_FILES) {
+            alert(messages.maxFiles);
             return;
         }
 
+        input.disabled = true;
+        uploading = true;
         const uploader = new ChunkedUploader((preview, progress) => {
             preview.querySelector('.progress-bar').style.width = `${progress}%`;
-            preview.querySelector('.upload-status').textContent = `جاري الرفع ${Math.round(progress)}%`;
+            preview.querySelector('.upload-status').textContent = messages.uploading.replace(':percent', Math.round(progress));
         });
 
-        for (const file of videos) {
+        for (const file of selected) {
             const preview = makePreview(file);
             previews.appendChild(preview);
-            if (file.size > MAX_VIDEO_SIZE) {
-                preview.querySelector('.upload-status').textContent = 'الحد الأقصى للفيديو 2 جيجابايت';
-                preview.dataset.failed = 'true';
+
+            if (!mimeForFile(file)) {
+                setFailed(preview, messages.invalidType);
+                addRemoveButton(preview);
                 continue;
             }
+            if (file.size > MAX_FILE_SIZE) {
+                setFailed(preview, messages.maxSize);
+                addRemoveButton(preview);
+                continue;
+            }
+
             try {
-                const mediaId = await uploader.upload(file, preview);
+                const uploaded = await uploader.upload(file, preview);
                 const hidden = document.createElement('input');
-                hidden.type = 'hidden'; hidden.name = 'media_ids[]'; hidden.value = mediaId;
+                hidden.type = 'hidden';
+                hidden.name = 'media_ids[]';
+                hidden.value = uploaded.mediaId;
+                hidden.dataset.uploadId = uploaded.uploadId;
                 uploadedIds.appendChild(hidden);
+                addRemoveButton(preview, hidden, uploaded.uploadId);
             } catch (error) {
-                preview.querySelector('.upload-status').textContent = error.message;
-                preview.dataset.failed = 'true';
+                setFailed(preview, error.message);
+                addRemoveButton(preview);
             }
         }
-        uploading = false;
 
-        images.forEach(file => {
-            const preview = makePreview(file, false);
-            previews.appendChild(preview);
-        });
+        uploading = false;
+        input.disabled = false;
     });
 
     form.addEventListener('submit', event => {
+        const keptFiles = form.querySelectorAll('input[name="keep_media[]"]:checked').length;
+        const newFiles = uploadedIds.querySelectorAll('input[name="media_ids[]"]').length;
         if (uploading || previews.querySelector('[data-failed="true"]')) {
             event.preventDefault();
-            alert(uploading ? 'انتظر حتى يكتمل رفع الفيديو.' : 'أصلح مشكلة رفع الفيديو أو احذفه من الاختيار قبل نشر البوست.');
+            alert(uploading ? messages.wait : messages.failed);
+        } else if (keptFiles + newFiles > MAX_FILES) {
+            event.preventDefault();
+            alert(messages.maxFiles);
         }
     });
 });
 
-function makePreview(file, progress = true) {
+function mimeForFile(file) {
+    const allowed = new Set([
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+        'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+    ]);
+    if (allowed.has(file.type)) return file.type;
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const fallback = ({
+        jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+        mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', avi: 'video/x-msvideo', mkv: 'video/x-matroska',
+    })[extension] || '';
+    return allowed.has(fallback) ? fallback : '';
+}
+
+function makePreview(file) {
     const item = document.createElement('div');
     item.className = 'rounded-lg border border-fb-border p-3 dark:border-zinc-700';
     const name = document.createElement('p');
     name.className = 'text-xs text-fb-muted dark:text-zinc-400';
     name.textContent = `${file.name} (${formatBytes(file.size)})`;
     item.appendChild(name);
-    if (progress) {
-        const barWrap = document.createElement('div');
-        barWrap.className = 'mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700';
-        const bar = document.createElement('div');
-        bar.className = 'progress-bar h-full bg-fb-blue transition-all';
-        bar.style.width = '0%'; barWrap.appendChild(bar); item.appendChild(barWrap);
-        const status = document.createElement('p');
-        status.className = 'upload-status mt-1 text-xs text-fb-muted';
-        status.textContent = 'بانتظار الرفع'; item.appendChild(status);
-    }
+
+    const barWrap = document.createElement('div');
+    barWrap.className = 'mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700';
+    const bar = document.createElement('div');
+    bar.className = 'progress-bar h-full bg-fb-blue transition-all';
+    bar.style.width = '0%';
+    barWrap.appendChild(bar);
+    item.appendChild(barWrap);
+
+    const status = document.createElement('p');
+    status.className = 'upload-status mt-1 text-xs text-fb-muted';
+    status.textContent = messages.waiting;
+    item.appendChild(status);
     return item;
 }
 
-function showError(container, message) {
-    const item = document.createElement('p');
-    item.className = 'text-sm text-red-600'; item.textContent = message;
-    container.appendChild(item);
+function setFailed(preview, message) {
+    preview.dataset.failed = 'true';
+    preview.querySelector('.upload-status').textContent = message;
+}
+
+function addRemoveButton(preview, hiddenInput = null, uploadId = null) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'mt-2 text-xs font-medium text-red-600 hover:underline';
+    button.textContent = messages.remove;
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        if (uploadId) {
+            const response = await fetch(routes.cancel, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ upload_id: uploadId }),
+            }).catch(() => null);
+            if (!response?.ok) {
+                button.disabled = false;
+                return;
+            }
+        }
+        hiddenInput?.remove();
+        preview.remove();
+    });
+    preview.appendChild(button);
 }
 
 function formatBytes(bytes) {

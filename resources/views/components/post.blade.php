@@ -16,6 +16,12 @@
         </a>
         <div class="min-w-0 flex-1">
             <a href="{{ route('profile.show', $post->user) }}" class="font-semibold hover:underline">{{ $post->user->name }}</a>
+            @if($post->isGroupPost() && $post->group)
+                @php($role = $post->group->memberRole($post->user))
+                @if($role)
+                    <span class="text-xs text-fb-blue">{{ $role === 'admin' ? __('app.role_admin') : ($role === 'moderator' ? __('app.role_moderator') : __('app.role_member')) }}</span>
+                @endif
+            @endif
             <div class="text-xs text-fb-muted dark:text-zinc-400">{{ $post->created_at->diffForHumans() }}@if($post->visibility === 'friends') · {{ __('app.visibility_friends') }}@endif</div>
             @if($post->isShare())
                 <div class="text-xs text-fb-muted dark:text-zinc-400">

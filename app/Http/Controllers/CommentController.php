@@ -5,13 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Comment;
 use App\Models\Post;
 use App\Notifications\ActivityNotification;
+use App\Services\CommunityNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class CommentController extends Controller
 {
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, CommunityNotificationService $notifications): JsonResponse
     {
         $validated = $request->validate([
             'post_id' => ['required', 'integer', 'exists:posts,id'],
@@ -48,15 +49,26 @@ class CommentController extends Controller
         if (! empty($validated['parent_id'])) {
             $parent = Comment::find($validated['parent_id']);
             if ($parent && $parent->user_id !== $auth->id) {
-                $parent->user->notify(new ActivityNotification('comment_reply', ['user_id' => $auth->id, 'user_name' => $auth->name, 'comment_id' => $parent->id, 'reply_id' => $comment->id, 'post_id' => $post->id]));
+                $parent->user->notify(new ActivityNotification('comment_reply', [
+                    'user_id' => $auth->id,
+                    'user_name' => $auth->name,
+                    'comment_id' => $parent->id,
+                    'reply_id' => $comment->id,
+                    'post_id' => $post->id,
+                ]));
             }
         } else {
-            $post->user->notify(new ActivityNotification('post_comment', ['user_id' => $auth->id, 'user_name' => $auth->name, 'post_id' => $post->id, 'comment_id' => $comment->id]));
+            $notifications->notifyPostAudience($post, $auth, 'post_comment', [
+                'user_id' => $auth->id,
+                'user_name' => $auth->name,
+                'post_id' => $post->id,
+                'comment_id' => $comment->id,
+            ]);
         }
 
         return response()->json([
             'success' => true,
-            'comment' => $comment,
+            'comment' => $comment->toTreeArray($auth),
             'message' => __('app.comment_added'),
         ], 201);
     }
@@ -65,7 +77,9 @@ class CommentController extends Controller
     {
         $this->authorize('view', $post);
 
-        $comments = $post->comments()->with(['user', 'reactions', 'children.user'])->get();
+        // Load every level in one query, then assemble the tree in memory. Loading
+        // only the root relationship silently dropped replies from the API result.
+        $comments = $post->allComments()->with(['user', 'reactions'])->get();
 
         $tree = $this->buildTree($comments);
 
@@ -87,7 +101,7 @@ class CommentController extends Controller
 
         return response()->json([
             'success' => true,
-            'comment' => $comment->fresh(),
+            'comment' => $comment->fresh()->toTreeArray(auth()->user()),
             'message' => __('app.comment_updated'),
         ]);
     }
@@ -147,4 +161,5 @@ class CommentController extends Controller
 
         return $result;
     }
+
 }

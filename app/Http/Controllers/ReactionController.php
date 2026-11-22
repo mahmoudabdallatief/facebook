@@ -6,12 +6,13 @@ use App\Models\Comment;
 use App\Models\Post;
 use App\Models\Reaction;
 use App\Notifications\ActivityNotification;
+use App\Services\CommunityNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ReactionController extends Controller
 {
-    public function store(Request $request, Post $post): JsonResponse
+    public function store(Request $request, Post $post, CommunityNotificationService $notifications): JsonResponse
     {
         $validated = $request->validate([
             'reaction_type' => ['required', 'string', 'in:' . implode(',', Reaction::REACTION_TYPES)],
@@ -19,6 +20,8 @@ class ReactionController extends Controller
 
         $reactionType = $validated['reaction_type'];
         $user = $request->user();
+
+        $this->authorize('view', $post);
 
         $existing = $post->reactions()->where('user_id', $user->id)->first();
 
@@ -37,9 +40,12 @@ class ReactionController extends Controller
             ]);
             $action = 'added';
 
-            if ($post->user_id !== $user->id) {
-                $post->user->notify(new ActivityNotification('post_reaction', ['user_id' => $user->id, 'user_name' => $user->name, 'post_id' => $post->id, 'reaction_type' => $reactionType]));
-            }
+            $notifications->notifyPostAudience($post, $user, 'post_reaction', [
+                'user_id' => $user->id,
+                'user_name' => $user->name,
+                'post_id' => $post->id,
+                'reaction_type' => $reactionType,
+            ]);
         }
 
         return response()->json([
@@ -61,6 +67,8 @@ class ReactionController extends Controller
         $reactionType = $validated['reaction_type'];
         $user = $request->user();
 
+        $this->authorize('view', $comment->post);
+
         $existing = $comment->reactions()->where('user_id', $user->id)->first();
 
         if ($existing) {
@@ -79,7 +87,13 @@ class ReactionController extends Controller
             $action = 'added';
 
             if ($comment->user_id !== $user->id) {
-                $comment->user->notify(new ActivityNotification('comment_reaction', ['user_id' => $user->id, 'user_name' => $user->name, 'comment_id' => $comment->id, 'reaction_type' => $reactionType, 'post_id' => $comment->post_id]));
+                $comment->user->notify(new ActivityNotification('comment_reaction', [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'comment_id' => $comment->id,
+                    'reaction_type' => $reactionType,
+                    'post_id' => $comment->post_id,
+                ]));
             }
         }
 

@@ -13,7 +13,7 @@
 
     <div class="space-y-4">
         @forelse($posts as $post)
-            <x-post :post="$post" />
+            <x-post-group-page :post="$post" />
         @empty
             <div class="text-center py-12">
                 <p class="text-fb-muted dark:text-zinc-500">{{ __('app.no_posts_yet') }}</p>

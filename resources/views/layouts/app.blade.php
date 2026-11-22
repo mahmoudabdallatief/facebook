@@ -19,6 +19,23 @@
             },
         };
         window.APP_LOCALE = @json(app()->getLocale());
+        window.postUploadRoutes = {
+            initiate: @json(route('uploads.initiate')),
+            chunk: @json(route('uploads.chunk')),
+            status: @json(route('uploads.status')),
+            cancel: @json(route('uploads.cancel')),
+        };
+        window.POST_UPLOAD_TEXT = {
+            maxFiles: @json(__('app.upload_max_files')),
+            maxSize: @json(__('app.upload_max_size')),
+            invalidType: @json(__('app.upload_invalid_type')),
+            wait: @json(__('app.upload_wait')),
+            failed: @json(__('app.upload_failed')),
+            waiting: @json(__('app.upload_waiting')),
+            uploading: @json(__('app.upload_progress')),
+            complete: @json(__('app.upload_complete')),
+            remove: @json(__('app.upload_remove')),
+        };
         window.REVERB_APP_KEY = @json(env('REVERB_APP_KEY'));
         window.REVERB_HOST = @json(env('REVERB_HOST'));
         window.REVERB_PORT = @json(env('REVERB_PORT'));
@@ -34,7 +51,7 @@
 </head>
 <body class="min-h-screen bg-fb-bg text-fb-text dark:bg-zinc-950 dark:text-zinc-100 font-sans antialiased">
     @include('layouts.partials.nav')
-    <main class="mx-auto w-full max-w-5xl px-4 py-6">
+    <main class="mx-auto w-full max-w-5xl px-4 pt-20 pb-6">
         @if (session('status'))
             <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200">
                 {{ session('status') }}
