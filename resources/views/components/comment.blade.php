@@ -73,8 +73,10 @@ $me = auth()->user();
 
             <!-- Reply form (hidden by default) -->
             <div id="reply-form-{{ $comment->id }}" class="hidden mt-3">
-                <form id="comment-form-{{ $comment->id }}" class="flex gap-2">
+                <form id="comment-form-{{ $comment->id }}" class="flex gap-2" action="{{ route('comments.store') }}">
                     <textarea name="body" rows="1" placeholder="{{ __('app.write_reply') }}" class="flex-1 min-h-[32px] rounded-lg border border-fb-border bg-fb-surface px-3 py-2 text-sm text-fb-text dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-fb-blue"></textarea>
+                    <input type="hidden" name="post_id" value="{{ $comment->post_id }}">
+                    <input type="hidden" name="parent_id" value="{{ $comment->id }}">
                     <button
                         type="submit"
                         onclick="submitReplyForm(event, {{ $comment->id }}, {{ $comment->post_id ?? 0 }})"
@@ -99,7 +101,7 @@ $me = auth()->user();
 
 @if($me && $me->id === $comment->user_id)
     <!-- Delete confirmation modal -->
-    <div id="delete-comment-modal-{{ $comment->id }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50">
+    <div id="delete-comment-modal-{{ $comment->id }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50" data-delete-url="{{ route('comments.destroy', $comment) }}">
         <div class="bg-fb-surface rounded-xl shadow-xl max-w-md w-full mx-4 dark:bg-zinc-900">
             <div class="p-4 border-b border-fb-border dark:border-zinc-700">
                 <h3 class="font-semibold">{{ __('app.delete_comment') }}</h3>
@@ -116,7 +118,7 @@ $me = auth()->user();
 
     <!-- Edit form (hidden by default) -->
     <div id="edit-form-{{ $comment->id }}" class="hidden border-t border-fb-border dark:border-zinc-800 pt-3 pb-4 mt-2">
-        <form id="edit-comment-form-{{ $comment->id }}" class="flex gap-2" onsubmit="submitEditComment(event, {{ $comment->id }})">
+        <form id="edit-comment-form-{{ $comment->id }}" class="flex gap-2" onsubmit="submitEditComment(event, {{ $comment->id }}, '{{ route('comments.update', $comment) }}')">
             @csrf @method('PATCH')
             <textarea name="body" rows="2" class="flex-1 min-h-[48px] rounded-lg border border-fb-border bg-fb-surface px-3 py-2 text-sm text-fb-text dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-fb-blue">{{ $comment->body }}</textarea>
             <button type="submit" class="rounded-lg bg-fb-blue px-3 py-2 text-xs font-semibold text-white hover:bg-fb-blue-hover">{{ __('app.save_changes') }}</button>
@@ -124,147 +126,3 @@ $me = auth()->user();
         </form>
     </div>
 @endif
-
-<script>
-function toggleReplyForm(commentId) {
-    const form = document.getElementById('reply-form-' + commentId);
-    if (form) form.classList.toggle('hidden');
-}
-
-function editComment(commentId) {
-    document.getElementById('comment-' + commentId)?.classList.add('hidden');
-    document.getElementById('edit-form-' + commentId)?.classList.remove('hidden');
-}
-
-function cancelEditComment(commentId) {
-    document.getElementById('comment-' + commentId)?.classList.remove('hidden');
-    document.getElementById('edit-form-' + commentId)?.classList.add('hidden');
-}
-
-function submitEditComment(event, commentId) {
-    event.preventDefault();
-    const form = event.target.closest('form');
-    const body = form.querySelector('textarea[name="body"]').value.trim();
-    if (!body) return;
-
-    const btn = form.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = '{{ __('app.saving') }}';
-
-    const updateUrl = @json(route('comments.update', ['comment' => '__COMMENT_ID__']))
-        .replace('__COMMENT_ID__', encodeURIComponent(commentId));
-
-    fetch(updateUrl, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-            'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-            body: body,
-        }),
-    }).then(async (res) => {
-        if (res.ok) {
-            location.reload();
-        } else {
-            const errorData = await res.json();
-            showToast(errorData.message || '{{ __('app.something_went_wrong') }}', 'error');
-            btn.disabled = false;
-            btn.textContent = '{{ __('app.save_changes') }}';
-        }
-    }).catch(err => {
-        showToast('{{ __('app.something_went_wrong') }}', 'error');
-        btn.disabled = false;
-        btn.textContent = '{{ __('app.save_changes') }}';
-    });
-}
-
-function deleteComment(commentId, postId) {
-    document.getElementById('delete-comment-modal-' + commentId)?.classList.remove('hidden');
-    window.currentDeleteComment = { id: commentId, postId: postId };
-}
-
-function cancelDeleteComment(commentId) {
-    document.getElementById('delete-comment-modal-' + commentId)?.classList.add('hidden');
-}
-
-function confirmDeleteComment(commentId, postId) {
-    const deleteUrl = @json(route('comments.destroy', ['comment' => '__COMMENT_ID__']))
-        .replace('__COMMENT_ID__', encodeURIComponent(commentId));
-
-    fetch(deleteUrl, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-            'Accept': 'application/json',
-        },
-    }).then(async (res) => {
-        const el = document.getElementById('comment-' + commentId);
-        if (el) el.remove();
-        cancelDeleteComment(commentId);
-        showToast('{{ __('app.comment_deleted') }}', 'success');
-
-        const list = document.getElementById('comments-list-' + postId);
-        if (list && !list.querySelector('[id^="comment-"]')) {
-            list.innerHTML = '<p class="text-xs text-center text-fb-muted dark:text-zinc-500 py-4">{{ __('app.no_comments_yet') }}</p>';
-        }
-    }).catch(err => {
-        showToast('{{ __('app.something_went_wrong') }}', 'error');
-        cancelDeleteComment(commentId);
-    });
-}
-
-function submitReplyForm(event, commentId, postId) {
-    event.preventDefault();
-    const form = event.target.closest('form');
-    const body = form.querySelector('textarea[name="body"]').value.trim();
-    if (!body) return;
-
-    const btn = form.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = '{{ __('app.saving') }}';
-
-    fetch('{{ route('comments.store') }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-            'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-            post_id: postId,
-            parent_id: commentId,
-            body: body,
-        }),
-    }).then(async (res) => {
-        if (res.ok) {
-            const data = await res.json();
-            location.reload();
-        } else {
-            const errorData = await res.json();
-            showToast(errorData.message || '{{ __('app.something_went_wrong') }}', 'error');
-            btn.disabled = false;
-            btn.textContent = '{{ __('app.reply') }}';
-        }
-    }).catch(err => {
-        showToast('{{ __('app.something_went_wrong') }}', 'error');
-        btn.disabled = false;
-        btn.textContent = '{{ __('app.reply') }}';
-    });
-}
-
-function showToast(message, type = 'error') {
-    const toast = document.createElement('div');
-    const bgColor = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
-    toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-4 py-2 rounded-lg shadow-lg z-50`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.3s';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-</script>

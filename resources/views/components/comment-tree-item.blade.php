@@ -133,7 +133,7 @@ $children = $comment->children ?? collect();
 
 @if($canEdit)
     <!-- Delete confirmation modal -->
-    <div id="delete-comment-modal-{{ $comment->id }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50">
+    <div id="delete-comment-modal-{{ $comment->id }}" data-delete-url="{{ route('comments.destroy', $comment) }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50">
         <div class="bg-fb-surface rounded-xl shadow-xl max-w-md w-full mx-4 dark:bg-zinc-900">
             <div class="p-4 border-b border-fb-border dark:border-zinc-700">
                 <h3 class="font-semibold">{{ __('app.delete_comment') }}</h3>
@@ -150,7 +150,7 @@ $children = $comment->children ?? collect();
 
     <!-- Edit form (hidden by default) -->
     <div id="edit-form-{{ $comment->id }}" class="hidden border-t border-fb-border dark:border-zinc-800 pt-3 pb-4 mt-2">
-        <form id="edit-comment-form-{{ $comment->id }}" class="flex gap-2" onsubmit="submitEditComment(event, {{ $comment->id }})">
+        <form id="edit-comment-form-{{ $comment->id }}" action="{{ route('comments.update', $comment) }}" method="POST" class="flex gap-2" onsubmit="submitEditComment(event, {{ $comment->id }})">
             @csrf @method('PATCH')
             <textarea name="body" rows="2" class="flex-1 min-h-[48px] rounded-lg border border-fb-border bg-fb-surface px-3 py-2 text-sm text-fb-text dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-fb-blue">{{ $comment->body }}</textarea>
             <button type="submit" class="rounded-lg bg-fb-blue px-3 py-2 text-xs font-semibold text-white hover:bg-fb-blue-hover">{{ __('app.save_changes') }}</button>

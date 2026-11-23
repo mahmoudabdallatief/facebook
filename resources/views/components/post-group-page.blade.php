@@ -188,7 +188,7 @@ if ($post->isGroupPost() && $post->group) {
             </form>
         </div>
 
-        <div id="comments-list-{{ $post->id }}" class="p-4 border-t border-fb-border dark:border-zinc-800">
+        <div id="comments-list-{{ $post->id }}" data-empty-message="{{ __('app.no_comments_yet') }}" data-deleted-message="{{ __('app.comment_deleted') }}" class="p-4 border-t border-fb-border dark:border-zinc-800">
             <div id="comments-container-{{ $post->id }}">
                 @include('components.comments-tree', ['post' => $post, 'comments' => $post->comments()->with(['user', 'reactions', 'children.user', 'children.reactions'])->get()])
             </div>
@@ -499,13 +499,19 @@ function confirmDeleteComment(commentId, postId) {
             'Accept': 'application/json',
         },
     }).then(async (res) => {
+        if (!res.ok) {
+            const error = await res.json().catch(() => ({}));
+            throw new Error(error.message || 'Unable to delete comment.');
+        }
+        const result = await res.json();
+
         const el = document.getElementById('comment-' + commentId);
         if (el) el.remove();
         cancelDeleteComment(commentId);
         showToast('{{ __('app.comment_deleted') }}', 'success');
 
         const list = document.getElementById('comments-container-' + postId);
-        if (list && !list.querySelector('[id^="comment-"]')) {
+        if (list && result.remaining_comments === 0) {
             list.innerHTML = '<p class="text-xs text-center text-fb-muted dark:text-zinc-500 py-4">{{ __('app.no_comments_yet') }}</p>';
         }
     }).catch(err => {

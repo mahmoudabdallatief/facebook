@@ -109,7 +109,8 @@
         </div>
 
         <div id="comment-form-wrapper-{{ $post->id }}" class="hidden p-4 border-t border-fb-border dark:border-zinc-800">
-            <form id="comment-form-{{ $post->id }}" class="flex gap-2">
+            <form id="comment-form-{{ $post->id }}" class="flex gap-2" action="{{ route('comments.store') }}">
+                <input type="hidden" name="post_id" value="{{ $post->id }}">
                 <textarea name="body" rows="1" placeholder="{{ __('app.add_comment') }}" class="flex-1 min-h-[36px] rounded-lg border border-fb-border bg-fb-surface px-3 py-2 text-sm text-fb-text dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-fb-blue"></textarea>
                 <button
                     type="submit"
@@ -121,7 +122,7 @@
             </form>
         </div>
 
-        <div id="comments-list-{{ $post->id }}" class="p-4 border-t border-fb-border dark:border-zinc-800">
+        <div id="comments-list-{{ $post->id }}" data-empty-message="{{ __('app.no_comments_yet') }}" data-deleted-message="{{ __('app.comment_deleted') }}" class="p-4 border-t border-fb-border dark:border-zinc-800">
             @forelse($post->comments()->with('user')->get() as $comment)
                 <x-comment
                     :comment="$comment"

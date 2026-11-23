@@ -110,11 +110,13 @@ class CommentController extends Controller
     {
         $this->authorize('delete', $comment);
 
+        $post = $comment->post;
         $comment->delete();
 
         return response()->json([
             'success' => true,
             'message' => __('app.comment_deleted'),
+            'remaining_comments' => $post->allComments()->count(),
         ]);
     }
 
