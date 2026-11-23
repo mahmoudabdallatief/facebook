@@ -2,15 +2,12 @@ import './bootstrap';
 
 const root = document.documentElement;
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-const theme = window.__initialTheme || localStorage.getItem('theme') || (prefersDark ? 'dark' : 'light');
+const theme = window.__initialTheme || (prefersDark ? 'dark' : 'light');
 root.classList.toggle('dark', theme === 'dark');
-localStorage.setItem('theme', theme);
 
 window.toggleTheme = async function toggleTheme() {
   const next = root.classList.contains('dark') ? 'light' : 'dark';
   root.classList.toggle('dark', next === 'dark');
-  localStorage.setItem('theme', next);
-  document.cookie = `theme=${next};path=/;max-age=31536000;SameSite=Lax`;
 
   try {
     await fetch('/theme', {
@@ -261,7 +258,7 @@ window.confirmDeleteComment = function confirmDeleteComment(commentId, postId) {
     // also have an inner comments-container, so preferring it loses that text.
     const list = document.getElementById('comments-list-' + postId)
       || document.getElementById('comments-container-' + postId);
-    showToast(list?.dataset.deletedMessage || 'Comment deleted', 'success');
+    showToast(modal.dataset.deletedMessage || list?.dataset.deletedMessage || 'Comment deleted', 'success');
     if (list && result.remaining_comments === 0) {
       const emptyMessage = document.createElement('p');
       emptyMessage.className = 'text-xs text-center text-fb-muted dark:text-zinc-500 py-4';

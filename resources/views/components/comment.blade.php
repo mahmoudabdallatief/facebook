@@ -101,7 +101,7 @@ $me = auth()->user();
 
 @if($me && $me->id === $comment->user_id)
     <!-- Delete confirmation modal -->
-    <div id="delete-comment-modal-{{ $comment->id }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50" data-delete-url="{{ route('comments.destroy', $comment) }}">
+    <div id="delete-comment-modal-{{ $comment->id }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50" data-delete-url="{{ route('comments.destroy', $comment) }}" data-deleted-message="{{ __('app.comment_deleted') }}">
         <div class="bg-fb-surface rounded-xl shadow-xl max-w-md w-full mx-4 dark:bg-zinc-900">
             <div class="p-4 border-b border-fb-border dark:border-zinc-700">
                 <h3 class="font-semibold">{{ __('app.delete_comment') }}</h3>

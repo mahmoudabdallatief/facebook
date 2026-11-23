@@ -133,7 +133,7 @@ $children = $comment->children ?? collect();
 
 @if($canEdit)
     <!-- Delete confirmation modal -->
-    <div id="delete-comment-modal-{{ $comment->id }}" data-delete-url="{{ route('comments.destroy', $comment) }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50">
+    <div id="delete-comment-modal-{{ $comment->id }}" data-delete-url="{{ route('comments.destroy', $comment) }}" data-deleted-message="{{ __('app.comment_deleted') }}" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50">
         <div class="bg-fb-surface rounded-xl shadow-xl max-w-md w-full mx-4 dark:bg-zinc-900">
             <div class="p-4 border-b border-fb-border dark:border-zinc-700">
                 <h3 class="font-semibold">{{ __('app.delete_comment') }}</h3>
