@@ -10,17 +10,20 @@ const routes = window.postUploadRoutes || {
     cancel: '/uploads/cancel',
 };
 
-const messages = window.POST_UPLOAD_TEXT || {
-    maxFiles: 'A post can contain up to 10 photos or videos.',
-    maxSize: 'Each file can be up to 2 GB.',
-    invalidType: 'Choose a supported photo or video.',
-    wait: 'Wait for uploads to finish before publishing.',
-    failed: 'Remove files that failed to upload, then try again.',
-    waiting: 'Waiting to upload',
-    uploading: 'Uploading :percent%',
-    complete: 'Upload complete',
-    remove: 'Remove file',
+const defaults = {
+    maxFiles: 'يمكن إضافة 10 صور أو فيديوهات كحد أقصى للمنشور.',
+    maxSize: 'الحد الأقصى لحجم كل صورة أو فيديو هو 2 جيجابايت.',
+    invalidType: 'اختر صورة أو فيديو من الأنواع المدعومة.',
+    wait: 'انتظر حتى يكتمل رفع الملفات قبل النشر.',
+    failed: 'احذف الملفات التي فشل رفعها ثم حاول مرة أخرى.',
+    waiting: 'في انتظار الرفع',
+    uploading: 'جارٍ الرفع :percent%',
+    complete: 'اكتمل الرفع',
+    remove: 'حذف الملف',
+    errorTitle: 'خطأ في الرفع',
+    ok: 'موافق',
 };
+const messages = Object.assign({}, defaults, window.POST_UPLOAD_TEXT || {});
 
 class ChunkedUploader {
     constructor(onProgress) {
@@ -95,6 +98,51 @@ class ChunkedUploader {
     }
 }
 
+let uploadErrorModal = null;
+
+function getUploadErrorModal() {
+    if (!uploadErrorModal) {
+        const wrapper = document.createElement('div');
+        wrapper.id = 'upload-error-modal';
+        wrapper.className = 'fixed inset-0 z-50 hidden flex items-center justify-center p-4';
+        wrapper.setAttribute('role', 'dialog');
+        wrapper.setAttribute('aria-modal', 'true');
+        wrapper.innerHTML = `
+            <div class="fixed inset-0 bg-black/50" aria-hidden="true" onclick="closeUploadError()"></div>
+            <div class="relative w-full max-w-sm transform overflow-hidden rounded-xl bg-fb-surface text-fb-text dark:bg-zinc-900 dark:text-zinc-100 shadow-xl transition-all">
+                <div class="flex items-center justify-between border-b border-fb-border p-4 dark:border-zinc-800">
+                    <h2 class="text-lg font-semibold">${messages.errorTitle}</h2>
+                    <button type="button" onclick="closeUploadError()" class="rounded-lg p-1 text-fb-muted hover:bg-zinc-100 dark:hover:bg-zinc-800" aria-label="إغلاق">×</button>
+                </div>
+                <div class="p-4">
+                    <p id="upload-error-message" class="text-sm"></p>
+                </div>
+                <div class="p-4 border-t border-fb-border dark:border-zinc-800 flex justify-end">
+                    <button type="button" onclick="closeUploadError()" class="rounded-lg bg-fb-blue px-4 py-2 text-sm font-semibold text-white hover:bg-fb-blue/90 dark:bg-zinc-800 dark:hover:bg-zinc-700">${messages.ok}</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(wrapper);
+        uploadErrorModal = wrapper;
+    }
+    return uploadErrorModal;
+}
+
+window.showUploadError = function(message) {
+    const modal = getUploadErrorModal();
+    const msgEl = modal.querySelector('#upload-error-message');
+    if (msgEl) msgEl.textContent = message;
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeUploadError = function() {
+    if (uploadErrorModal) {
+        uploadErrorModal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('media');
     const form = input?.closest('form');
@@ -124,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const keptFiles = form.querySelectorAll('input[name="keep_media[]"]:checked').length;
         const currentCount = uploadedIds.querySelectorAll('input[name="media_ids[]"]').length + keptFiles;
         if (currentCount + selected.length > MAX_FILES) {
-            alert(messages.maxFiles);
+            showUploadError(messages.maxFiles);
             return;
         }
 
@@ -174,10 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const newFiles = uploadedIds.querySelectorAll('input[name="media_ids[]"]').length;
         if (uploading || previews.querySelector('[data-failed="true"]')) {
             event.preventDefault();
-            alert(uploading ? messages.wait : messages.failed);
+            showUploadError(uploading ? messages.wait : messages.failed);
         } else if (keptFiles + newFiles > MAX_FILES) {
             event.preventDefault();
-            alert(messages.maxFiles);
+            showUploadError(messages.maxFiles);
         }
     });
 });
