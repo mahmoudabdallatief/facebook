@@ -9,35 +9,40 @@
         <div class="flex items-center gap-2 text-sm">
 @auth
                 <a href="{{ route('posts.index') }}" @class([
-                    'rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
-                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('posts.*'),
+                    'rounded-lg px-3 py-1.5 font-medium border-b-2 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 border-b-2 border-[#0866ff] dark:text-blue-400 dark:border-blue-400' => request()->routeIs('posts.*'),
                     'text-fb-muted dark:text-zinc-300' => !request()->routeIs('posts.*'),
                 ]) @if(request()->routeIs('posts.*')) aria-current="page" @endif>{{ __('app.posts') }}</a>
                 <a href="{{ route('pages.index') }}" @class([
-                    'rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
-                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('pages.*'),
+                    'rounded-lg px-3 py-1.5 font-medium border-b-2 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 border-fb-blue dark:text-blue-400 dark:border-blue-400' => request()->routeIs('pages.*'),
                     'text-fb-muted dark:text-zinc-300' => !request()->routeIs('pages.*'),
                 ]) @if(request()->routeIs('pages.*')) aria-current="page" @endif>{{ __('app.pages') }}</a>
                 <a href="{{ route('groups.index') }}" @class([
-                    'rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
-                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('groups.*'),
+                    'rounded-lg px-3 py-1.5 font-medium border-b-2 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 border-fb-blue dark:text-blue-400 dark:border-blue-400' => request()->routeIs('groups.*'),
                     'text-fb-muted dark:text-zinc-300' => !request()->routeIs('groups.*'),
                 ]) @if(request()->routeIs('groups.*')) aria-current="page" @endif>{{ __('app.groups') }}</a>
                 <a href="{{ route('messenger.index') }}" @class([
-                    'relative rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
-                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('messenger.*'),
+                    'relative rounded-lg px-3 py-1.5 font-medium border-b-2 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 border-fb-blue dark:text-blue-400 dark:border-blue-400' => request()->routeIs('messenger.*'),
                     'text-fb-muted dark:text-zinc-300' => !request()->routeIs('messenger.*'),
                 ]) @if(request()->routeIs('messenger.*')) aria-current="page" @endif>{{ __('messenger.chats') }}
                     <span id="unread-badge" class="absolute -top-1 -right-1 hidden w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-medium flex items-center justify-center"></span>
                 </a>
                 <a href="{{ route('friends.index') }}" @class([
-                    'rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
-                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('friends.*'),
+                    'rounded-lg px-3 py-1.5 font-medium border-b-2 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 border-fb-blue dark:text-blue-400 dark:border-blue-400' => request()->routeIs('friends.*'),
                     'text-fb-muted dark:text-zinc-300' => !request()->routeIs('friends.*'),
                 ]) @if(request()->routeIs('friends.*')) aria-current="page" @endif>{{ __('app.friends') }}</a>
+                <a href="{{ route('search') }}" @class([
+                    'rounded-lg px-3 py-1.5 font-medium border-b-2 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 border-fb-blue dark:text-blue-400 dark:border-blue-400' => request()->routeIs('search'),
+                    'text-fb-muted dark:text-zinc-300' => !request()->routeIs('search'),
+                ]) @if(request()->routeIs('search')) aria-current="page" @endif>{{ __('app.search.title') }}</a>
                 <a href="{{ route('notifications.index') }}" @class([
-                    'relative rounded-lg px-3 py-1.5 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800',
-                    'text-fb-blue bg-fb-blue/10 dark:text-blue-400 dark:bg-fb-blue/20' => request()->routeIs('notifications.*'),
+                    'relative rounded-lg px-3 py-1.5 font-medium border-b-2 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 border-fb-blue dark:text-blue-400 dark:border-blue-400' => request()->routeIs('notifications.*'),
                     'text-fb-muted dark:text-zinc-300' => !request()->routeIs('notifications.*'),
                 ]) @if(request()->routeIs('notifications.*')) aria-current="page" @endif>{{ __('app.notifications') }}
                     <span id="notif-badge" class="absolute -top-1 -right-1 hidden w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"><span id="notif-count">0</span></span>

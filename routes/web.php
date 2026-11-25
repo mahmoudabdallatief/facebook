@@ -21,6 +21,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\PageMemberController;
 use App\Http\Controllers\PagePostController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\ShareController;
@@ -125,6 +126,8 @@ Route::middleware('auth')->group(function (): void {
         Route::get('status', [ChunkedUploadController::class, 'status'])->name('uploads.status');
         Route::delete('cancel', [ChunkedUploadController::class, 'cancel'])->name('uploads.cancel');
     });
+
+    Route::get('search', [SearchController::class, 'index'])->name('search');
 
     Route::get('friends', [FriendController::class, 'index'])->name('friends.index');
     Route::post('friends/{user}', [FriendController::class, 'send'])->name('friends.send');

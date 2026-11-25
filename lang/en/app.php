@@ -295,6 +295,25 @@ return [
     'you' => 'You',
     'all' => 'All',
 
+    'search' => [
+        'title' => 'Search',
+        'placeholder' => 'Search people, posts, groups, pages...',
+        'all' => 'All',
+        'people' => 'People',
+        'posts' => 'Posts',
+        'groups' => 'Groups',
+        'pages' => 'Pages',
+        'shares' => 'Shared Posts',
+        'view_all' => 'View all',
+        'start_searching' => 'Start searching',
+        'start_sub' => 'Type a keyword above to find people, posts, groups, pages and shared posts.',
+        'results_for' => 'Results for :query',
+        'query_too_short' => 'Query too short',
+        'query_too_short_sub' => 'Please type at least :min characters to search.',
+        'no_results' => 'No results found.',
+        'no_results_for' => 'No results found for ":query".',
+    ],
+
     // New translations for Module 10
     'post_created_notification' => 'New post created in :name',
     'post_shared' => 'Post shared',
