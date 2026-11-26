@@ -1,3 +1,11 @@
+use App\Models\User;
+use App\Models\Friendship;
+use Illuminate\Support\Facades\Hash;
+use App\Models\PostMedia;
+use App\Models\MessageMedia;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 @extends('layouts.app')
 
 @section('title', __('app.settings'))
