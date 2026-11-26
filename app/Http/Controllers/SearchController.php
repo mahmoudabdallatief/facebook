@@ -74,8 +74,11 @@ class SearchController extends Controller
 
     private function searchPeople(string $booleanQuery, bool $limited)
     {
+        $user = auth()->user();
+
         $q = User::query()
             ->where('id', '!=', auth()->id())
+            ->when(! empty($blockedIds = $user->blockedRelationUserIds()), fn ($q) => $q->whereNotIn('id', $blockedIds))
             ->whereRaw('MATCH(name, email) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
             ->latest();
 

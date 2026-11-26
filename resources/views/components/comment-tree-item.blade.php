@@ -2,27 +2,18 @@
 
 @php
 $me = auth()->user();
-$reactionTypes = \App\Models\Reaction::REACTION_TYPES;
-$icons = [
-    'like' => '👍',
-    'love' => '❤️',
-    'haha' => '😂',
-    'wow' => '😮',
-    'sad' => '😢',
-    'angry' => '😡',
-];
+$blockedForViewer = $me && $comment->user && $me->hasBlockRelationWith($comment->user);
 $canEdit = $me && $me->id === $comment->user_id;
 $canDelete = $canEdit;
-$reactionCounts = $comment->reactionCounts();
-$reactors = $comment->reactions()->with('user')->get();
-$totalReactions = $comment->total_reactions ?? $comment->reactions()->count();
+    $reactionCounts = $comment->reactionCounts();
+    $totalReactions = $comment->total_reactions ?? $comment->reactions()->count();
 $userReaction = $comment->userReaction($me);
 $children = $comment->children ?? collect();
 @endphp
 
 <div
     id="comment-{{ $comment->id }}"
-    class="border-b border-fb-border dark:border-zinc-800 pt-3 pb-4 {{ $depth > 0 ? 'pl-12 border-l-2 border-l-zinc-200 dark:border-l-zinc-800' : '' }}"
+    class="relative border-b border-fb-border/70 dark:border-zinc-800 py-4 {{ $depth > 0 ? 'ml-10 sm:ml-12 pl-3 sm:pl-4 border-l-2 border-l-zinc-200 dark:border-l-zinc-700' : '' }}"
 >
     <div class="flex gap-3">
         <div class="flex-shrink-0">
@@ -42,31 +33,18 @@ $children = $comment->children ?? collect();
             </div>
             <div class="text-sm text-fb-text dark:text-zinc-200 whitespace-pre-line break-words">{{ nl2br(e($comment->body)) }}</div>
 
-            <div class="flex items-center gap-3 mt-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-xs text-fb-muted dark:text-zinc-500">{{ __('app.reactions') }}</span>
+            @unless($blockedForViewer)
+            <div class="mt-2">
+                <x-reactions
+                    :reactionable="$comment"
+                    :user-reaction="$userReaction"
+                    :counts="$reactionCounts"
+                    :total="$totalReactions"
+                    :url="route('comments.reactions.store', $comment)"
+                />
+            </div>
 
-                    <div class="flex items-center gap-1.5 px-1 py-1">
-                        @foreach($reactionTypes as $type)
-                            <button
-                                type="button"
-                                onclick="toggleReaction('{{ route('comments.reactions.store', $comment) }}', '{{ $type }}')"
-                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all
-                                    @if($userReaction === $type)
-                                        bg-fb-blue/10 text-fb-blue border border-fb-blue/30
-                                    @else
-                                        bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700
-                                    @endif
-                                "
-                                id="reaction-btn-{{ $comment->id }}-{{ $type }}"
-                            >
-                                <span>{{ $icons[$type] }}</span>
-                                <span class="hidden sm:inline">{{ __('app.reaction_' . $type) }}</span>
-                                <span class="count hidden sm:inline text-xs">{{ $reactionCounts[$type] ?? 0 }}</span>
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
+            <div class="mt-2 flex flex-wrap items-center gap-3">
 
                 @if($canEdit)
                     <button
@@ -95,16 +73,6 @@ $children = $comment->children ?? collect();
 
             </div>
 
-            @if($reactors->isNotEmpty())
-                <div class="mt-2 flex flex-wrap gap-2" aria-label="{{ __('app.reactions') }}">
-                    @foreach($reactors as $reactor)
-                        <span class="rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                            {{ $reactor->user->name }} · {{ __('app.reaction_' . $reactor->reaction_type) }}
-                        </span>
-                    @endforeach
-                </div>
-            @endif
-
             <!-- Reply form (hidden by default) -->
             <div id="reply-form-{{ $comment->id }}" class="hidden mt-3">
                 <form id="comment-form-{{ $comment->id }}" action="{{ route('comments.store') }}" method="POST" class="flex gap-2" onsubmit="submitReplyForm(event, {{ $comment->id }}, {{ $comment->post_id }})">
@@ -118,17 +86,19 @@ $children = $comment->children ?? collect();
                     </button>
                 </form>
             </div>
+            @endunless
 
-            <!-- Children replies -->
-            @if($children->isNotEmpty())
-                <div class="mt-3">
-                    @foreach($children as $child)
-                        @include('components.comment-tree-item', ['comment' => $child, 'depth' => $depth + 1])
-                    @endforeach
-                </div>
-            @endif
         </div>
     </div>
+
+    <!-- Children replies sit below the complete parent row. -->
+    @if($children->isNotEmpty())
+        <div class="mt-2">
+            @foreach($children as $child)
+                @include('components.comment-tree-item', ['comment' => $child, 'depth' => $depth + 1])
+            @endforeach
+        </div>
+    @endif
 </div>
 
 @if($canEdit)

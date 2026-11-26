@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (app()->environment('testing') || config('database.default') !== 'mysql') {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table): void {
             $table->fulltext(['name', 'email']);
         });
@@ -27,6 +31,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (app()->environment('testing') || config('database.default') !== 'mysql') {
+            return;
+        }
+
         Schema::table('pages', function (Blueprint $table): void {
             $table->dropFulltext('name');
         });

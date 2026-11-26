@@ -41,9 +41,15 @@ class FriendController extends Controller
 
         $suggestions = User::query()
             ->whereNotIn('id', $relatedIds)
+            ->when(! empty($blockedIds = $user->blockedRelationUserIds()), fn ($q) => $q->whereNotIn('id', $blockedIds))
             ->inRandomOrder()
             ->limit(12)
             ->get();
+
+        $user->notifications()
+            ->where('read_at', null)
+            ->whereIn('type', ['friend_request', 'friend_accepted'])
+            ->update(['read_at' => now()]);
 
         return view('friends.index', [
             'friends' => $friends,

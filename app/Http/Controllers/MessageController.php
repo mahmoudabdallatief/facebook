@@ -37,6 +37,10 @@ class MessageController extends Controller
             403
         );
 
+        if ($user->hasBlockRelationWith($conversation->otherUser($user))) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
             'media_ids' => ['sometimes', 'array'],
@@ -176,6 +180,10 @@ class MessageController extends Controller
             403
         );
 
+        if ($user->hasBlockRelationWith($conversation->otherUser($user))) {
+            abort(403);
+        }
+
         $messages = $conversation->messages()
             ->where('sender_id', '!=', $user->id)
             ->whereNull('read_at')
@@ -197,6 +205,10 @@ class MessageController extends Controller
             $conversation->user_one_id === $user->id || $conversation->user_two_id === $user->id,
             403
         );
+
+        if ($user->hasBlockRelationWith($conversation->otherUser($user))) {
+            abort(403);
+        }
 
         $page = $request->get('page', 1);
         $perPage = 50;

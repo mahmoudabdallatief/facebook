@@ -69,6 +69,10 @@ class ReactionController extends Controller
 
         $this->authorize('view', $comment->post);
 
+        if ($user->hasBlockRelationWith($comment->user)) {
+            return response()->json(['success' => false, 'message' => __('app.comment_blocked_interaction')], 403);
+        }
+
         $existing = $comment->reactions()->where('user_id', $user->id)->first();
 
         if ($existing) {

@@ -35,6 +35,11 @@
                     'text-fb-blue bg-fb-blue/10 border-fb-blue dark:text-blue-400 dark:border-blue-400' => request()->routeIs('friends.*'),
                     'text-fb-muted dark:text-zinc-300' => !request()->routeIs('friends.*'),
                 ]) @if(request()->routeIs('friends.*')) aria-current="page" @endif>{{ __('app.friends') }}</a>
+                <a href="{{ route('settings.index') }}" @class([
+                    'rounded-lg px-3 py-1.5 font-medium border-b-2 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    'text-fb-blue bg-fb-blue/10 border-fb-blue dark:text-blue-400 dark:border-blue-400' => request()->routeIs('settings.*'),
+                    'text-fb-muted dark:text-zinc-300' => !request()->routeIs('settings.*'),
+                ]) @if(request()->routeIs('settings.*')) aria-current="page" @endif>{{ __('app.settings') }}</a>
                 <a href="{{ route('search') }}" @class([
                     'rounded-lg px-3 py-1.5 font-medium border-b-2 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
                     'text-fb-blue bg-fb-blue/10 border-fb-blue dark:text-blue-400 dark:border-blue-400' => request()->routeIs('search'),

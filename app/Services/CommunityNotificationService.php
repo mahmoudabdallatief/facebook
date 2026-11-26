@@ -31,7 +31,7 @@ class CommunityNotificationService
         }
 
         $recipients
-            ->filter(fn ($recipient) => $recipient instanceof User && $recipient->id !== $actor->id)
+            ->filter(fn ($recipient) => $recipient instanceof User && $recipient->id !== $actor->id && ! $actor->hasBlockRelationWith($recipient))
             ->unique('id')
             ->each(fn (User $recipient) => $recipient->notify(new ActivityNotification($type, $data)));
     }

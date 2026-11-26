@@ -38,6 +38,8 @@
                                 $url = route('posts.show', $comment->post);
                             }
                         }
+                    } elseif (in_array($d['type'] ?? '', ['friend_request', 'friend_accepted'])) {
+                        $url = route('friends.index');
                     }
 
                     $communityName = $post?->page?->name ?? $post?->group?->name;

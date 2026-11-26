@@ -10,7 +10,8 @@ $icons = [
     'sad' => '😢',
     'angry' => '😡',
 ];
-$me = auth()->user();
+    $me = auth()->user();
+    $blockedForViewer = $me && $me->hasBlockRelationWith($comment->user);
 @endphp
 
 <div
@@ -35,7 +36,8 @@ $me = auth()->user();
             </div>
             <div class="text-sm text-fb-text dark:text-zinc-200 whitespace-pre-line break-words">{{ nl2br(e($comment->body)) }}</div>
 
-            <div class="flex items-center gap-3 mt-2">
+            @unless($blockedForViewer)
+            <div class="mt-2">
                 <x-reactions
                     :reactionable="$comment"
                     :user-reaction="$userReaction"
@@ -43,7 +45,10 @@ $me = auth()->user();
                     :total="$comment->total_reactions"
                     :url="route('comments.reactions.store', $comment)"
                 />
+            </div>
+            @endunless
 
+            <div class="mt-2 flex flex-wrap items-center gap-3">
                 @if($me && $me->id === $comment->user_id)
                     <button
                         type="button"
@@ -61,6 +66,7 @@ $me = auth()->user();
                     </button>
                 @endif
 
+                @unless($blockedForViewer)
                 <button
                     type="button"
                     onclick="toggleReplyForm({{ $comment->id }})"
@@ -68,6 +74,7 @@ $me = auth()->user();
                 >
                     {{ __('app.reply') }}
                 </button>
+                @endunless
 
             </div>
 

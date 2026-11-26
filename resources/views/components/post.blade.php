@@ -1,10 +1,12 @@
 @props(['post'])
 
-@php($me = auth()->user())
-@php($canEdit = $me && $me->id === $post->user_id)
-@php($shareTarget = $post->rootOriginalPost())
-@php($shareCount = $shareTarget->shareCount())
-@php($alreadyShared = $me ? $shareTarget->hasSharedBy($me) : false)
+@php
+    $me = auth()->user();
+    $canEdit = $me && $me->id === $post->user_id;
+    $shareTarget = $post->rootOriginalPost();
+    $shareCount = $shareTarget->shareCount();
+    $alreadyShared = $me ? $shareTarget->hasSharedBy($me) : false;
+@endphp
 <article id="post-{{ $post->id }}" class="rounded-xl border border-fb-border bg-fb-surface shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-center gap-3 p-4">
         <a href="{{ route('profile.show', $post->user) }}">
@@ -17,7 +19,9 @@
         <div class="min-w-0 flex-1">
             <a href="{{ route('profile.show', $post->user) }}" class="font-semibold hover:underline">{{ $post->user->name }}</a>
             @if($post->isGroupPost() && $post->group)
-                @php($role = $post->group->memberRole($post->user))
+                @php
+                    $role = $post->group->memberRole($post->user);
+                @endphp
                 @if($role)
                     <span class="text-xs text-fb-blue">{{ $role === 'admin' ? __('app.role_admin') : ($role === 'moderator' ? __('app.role_moderator') : __('app.role_member')) }}</span>
                 @endif
@@ -123,17 +127,24 @@
         </div>
 
         <div id="comments-list-{{ $post->id }}" data-empty-message="{{ __('app.no_comments_yet') }}" data-deleted-message="{{ __('app.comment_deleted') }}" class="p-4 border-t border-fb-border dark:border-zinc-800">
-            @forelse($post->comments()->with('user')->get() as $comment)
-                <x-comment
-                    :comment="$comment"
-                    :user-reaction="$comment->userReaction($me)"
-                    :can-edit="$me && $me->id === $comment->user_id"
-                    :can-delete="$me && $me->id === $comment->user_id"
-                    :depth="0"
-                />
-            @empty
+            @php
+                $postComments = \App\Models\Comment::buildTree(
+                    $post->allComments()->with(['user', 'reactions'])->get()
+                );
+            @endphp
+            @if(empty($postComments))
                 <p class="text-xs text-center text-fb-muted dark:text-zinc-500 py-4">{{ __('app.no_comments_yet') }}</p>
-            @endforelse
+            @else
+                @foreach($postComments as $comment)
+                    <x-comment
+                        :comment="$comment"
+                        :user-reaction="$comment->userReaction($me)"
+                        :can-edit="$me && $me->id === $comment->user_id"
+                        :can-delete="$me && $me->id === $comment->user_id"
+                        :depth="0"
+                    />
+                @endforeach
+            @endif
         </div>
     </div>
 </article>

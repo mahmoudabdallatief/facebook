@@ -190,7 +190,7 @@ if ($post->isGroupPost() && $post->group) {
 
         <div id="comments-list-{{ $post->id }}" data-empty-message="{{ __('app.no_comments_yet') }}" data-deleted-message="{{ __('app.comment_deleted') }}" class="p-4 border-t border-fb-border dark:border-zinc-800">
             <div id="comments-container-{{ $post->id }}">
-                @include('components.comments-tree', ['post' => $post, 'comments' => $post->comments()->with(['user', 'reactions', 'children.user', 'children.reactions'])->get()])
+                @include('components.comments-tree', ['post' => $post, 'comments' => \App\Models\Comment::buildTree($post->allComments()->with(['user', 'reactions'])->get())])
             </div>
         </div>
     </div>
@@ -340,6 +340,7 @@ function createCommentElement(comment, depth = 0) {
     const me = {{ json_encode(auth()->user() ? ['id' => auth()->user()->id] : null) }};
     const canEdit = me && me.id === comment.user.id;
     const canDelete = canEdit;
+    const blockedForViewer = !!comment.blocked_for_viewer;
 
     const reactionIcons = {
         'like': '👍', 'love': '❤️', 'haha': '😂', 'wow': '😮', 'sad': '😢', 'angry': '😡'
@@ -357,8 +358,8 @@ function createCommentElement(comment, depth = 0) {
     const commentReactionUrlTemplate = @json(route('comments.reactions.store', ['comment' => '__COMMENT_ID__']));
     const profileUrlTemplate = @json(route('profile.show', ['user' => '__USER_ID__']));
 
-    let reactionsHtml = '<div class="flex items-center gap-2 px-1 py-1">';
-    for (const type of Object.keys(reactionIcons)) {
+    let reactionsHtml = blockedForViewer ? '' : '<div class="flex items-center gap-2 px-1 py-1">';
+    for (const type of (blockedForViewer ? [] : Object.keys(reactionIcons))) {
         const count = comment.reaction_counts?.[type] ?? 0;
         const isUserReaction = comment.user_reaction === type;
         const reactionUrl = commentReactionUrlTemplate.replace('__COMMENT_ID__', encodeURIComponent(comment.id));
@@ -386,30 +387,30 @@ function createCommentElement(comment, depth = 0) {
                     ${depth > 0 ? '<span class="text-xs text-fb-muted dark:text-zinc-500">{{ __('app.reply') }}</span>' : ''}
                     <span class="text-xs text-fb-muted dark:text-zinc-500">${comment.created_at}</span>
                 </div>
-                <div class="text-sm text-fb-text dark:text-zinc-200 whitespace-pre-line break-words">${comment.body}</div>
+                <div class="text-sm text-fb-text dark:text-zinc-200 whitespace-pre-line break-words">${comment.body || ''}</div>
 
                 <div class="flex items-center gap-3 mt-2">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-fb-muted dark:text-zinc-500">{{ __('app.reactions') }}</span>
+                    ${blockedForViewer ? '' : '<div class="flex items-center gap-2">'}
+                    ${blockedForViewer ? '' : '<span class="text-xs text-fb-muted dark:text-zinc-500">{{ __('app.reactions') }}</span>'}
                         ${reactionsHtml}
-                    </div>
+                    ${blockedForViewer ? '' : '</div>'}
 
                     ${canEdit ? '<button type="button" onclick="editComment(' + comment.id + ')" class="text-xs text-fb-muted hover:text-fb-blue dark:hover:text-zinc-300">{{ __('app.edit') }}</button>' : ''}
                     ${canDelete ? '<button type="button" onclick="deleteComment(' + comment.id + ', ' + comment.post_id + ')" class="text-xs text-red-600 hover:text-red-700 dark:hover:text-red-400">{{ __('app.delete') }}</button>' : ''}
 
-                    <button type="button" onclick="toggleReplyForm(' + comment.id + ')" class="text-xs text-fb-blue hover:text-fb-blue-hover dark:text-zinc-300 dark:hover:text-zinc-100">{{ __('app.reply') }}</button>
+                    ${blockedForViewer ? '' : '<button type="button" onclick="toggleReplyForm(' + comment.id + ')" class="text-xs text-fb-blue hover:text-fb-blue-hover dark:text-zinc-300 dark:hover:text-zinc-100">{{ __('app.reply') }}</button>'}
                 </div>
 
                 ${comment.reactors && comment.reactors.length ? '<div class="comment-reactors mt-2 flex flex-wrap gap-2"></div>' : ''}
 
                 <!-- Reply form (hidden by default) -->
-                <div id="reply-form-${comment.id}" class="hidden mt-3">
+                ${blockedForViewer ? '' : '<div id="reply-form-' + comment.id + '" class="hidden mt-3">'}
                     <form id="comment-form-${comment.id}" action="{{ route('comments.store') }}" method="POST" class="flex gap-2" onsubmit="submitReplyForm(event, ${comment.id}, ${comment.post_id})">
                         @csrf
                         <textarea name="body" rows="1" placeholder="{{ __('app.write_reply') }}" class="flex-1 min-h-[32px] rounded-lg border border-fb-border bg-fb-surface px-3 py-2 text-sm text-fb-text dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-fb-blue resize-none" style="height: 32px;"></textarea>
                         <button type="submit" class="rounded-lg bg-fb-blue px-3 py-2 text-xs font-semibold text-white hover:bg-fb-blue-hover">{{ __('app.reply') }}</button>
                     </form>
-                </div>
+                ${blockedForViewer ? '' : '</div>'}
 
                 ${childrenHtml}
             </div>

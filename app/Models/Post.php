@@ -120,8 +120,9 @@ class Post extends Model
         }
 
         $viewerId = $viewer->getKey();
+        $blockedIds = $viewer->blockedRelationUserIds();
 
-        return $query->where(function (Builder $q) use ($viewerId): void {
+        return $query->where(function (Builder $q) use ($viewerId, $blockedIds): void {
                 $q->where(function (Builder $ownPost) use ($viewerId): void {
                     $ownPost->where('user_id', $viewerId)
                         ->whereNull('page_id');
@@ -179,6 +180,15 @@ class Post extends Model
                             )
                         )', [$viewerId, $viewerId]);
                 });
+        })
+        ->when(! empty($blockedIds), function (Builder $q) use ($blockedIds): void {
+            $q->whereNotIn('posts.user_id', $blockedIds)
+                ->whereNotExists(function ($q2) use ($blockedIds): void {
+                    $q2->selectRaw('1')
+                        ->from('posts AS original')
+                        ->whereColumn('original.id', 'posts.original_post_id')
+                        ->whereIn('original.user_id', $blockedIds);
+                });
         });
     }
 
@@ -189,6 +199,10 @@ class Post extends Model
 
     public function canView(?User $viewer): bool
     {
+        if ($viewer !== null && $viewer->hasBlockRelationWith($this->user)) {
+            return false;
+        }
+
         if ($viewer !== null && $this->isOwnedBy($viewer)) {
             return true;
         }

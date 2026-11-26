@@ -25,6 +25,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\ShareController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ThemeController;
 use Illuminate\Support\Facades\Route;
 
@@ -50,6 +51,16 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    Route::prefix('settings')->name('settings.')->group(function (): void {
+        Route::get('/', [SettingsController::class, 'index'])->name('index');
+        Route::patch('privacy', [SettingsController::class, 'updatePrivacy'])->name('privacy');
+        Route::post('block', [SettingsController::class, 'blockUser'])->name('block');
+        Route::post('block/{user}', [SettingsController::class, 'blockProfileUser'])->name('block-profile');
+        Route::delete('block/selected', [SettingsController::class, 'unblockSelected'])->name('unblock-selected');
+        Route::delete('block/{user}', [SettingsController::class, 'unblockUser'])->name('unblock');
+        Route::delete('delete-account', [SettingsController::class, 'deleteAccount'])->name('delete-account');
+    });
 
     Route::get('posts', [PostController::class, 'index'])->name('posts.index');
     Route::get('posts/create', [PostController::class, 'create'])->name('posts.create');

@@ -25,6 +25,7 @@
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('hidden');
+            modal.removeAttribute('style');
             document.body.style.overflow = 'hidden';
         }
     };

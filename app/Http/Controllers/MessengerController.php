@@ -14,15 +14,30 @@ class MessengerController extends Controller
     {
         $user = $request->user();
 
-        // إنشاء محادثات تلقائية للأصدقاء الذين ليس لديهم محادثة بعد
+        $blockedIds = $user->blockedRelationUserIds();
+
+        // إنشاء محادثات تلقائية للأصدقاء الذين ليس لديهم محادثة بعد (باستثناء المحظورين)
         foreach ($user->friends() as $friend) {
-            Conversation::getOrCreate($user, $friend);
+            if (! in_array($friend->id, $blockedIds, true)) {
+                Conversation::getOrCreate($user, $friend);
+            }
         }
 
         $conversations = Conversation::query()
             ->where(function ($q) use ($user) {
                 $q->where('user_one_id', $user->id)
                     ->orWhere('user_two_id', $user->id);
+            })
+            ->when(! empty($blockedIds), function ($q) use ($user, $blockedIds) {
+                $q->whereNot(function ($q) use ($user, $blockedIds) {
+                    $q->where(function ($q2) use ($user, $blockedIds) {
+                        $q2->where('user_one_id', $user->id)
+                            ->whereIn('user_two_id', $blockedIds);
+                    })->orWhere(function ($q2) use ($user, $blockedIds) {
+                        $q2->where('user_two_id', $user->id)
+                            ->whereIn('user_one_id', $blockedIds);
+                    });
+                });
             })
             ->with([
                 'userOne',
@@ -48,6 +63,13 @@ class MessengerController extends Controller
         ]);
     }
 
+    private function assertNotBlocked(User $user, User $other): void
+    {
+        if ($user->hasBlockRelationWith($other)) {
+            abort(403);
+        }
+    }
+
     public function show(Request $request, Conversation $conversation): View
     {
         $user = $request->user();
@@ -56,6 +78,8 @@ class MessengerController extends Controller
             $conversation->user_one_id === $user->id || $conversation->user_two_id === $user->id,
             403
         );
+
+        $this->assertNotBlocked($user, $conversation->otherUser($user));
 
         $otherUser = $conversation->otherUser($user);
 
@@ -93,6 +117,10 @@ class MessengerController extends Controller
             return response()->json(['success' => false, 'message' => 'Cannot start conversation with yourself'], 422);
         }
 
+        if ($auth->hasBlockRelationWith($user)) {
+            return response()->json(['success' => false, 'message' => 'Cannot start conversation with a blocked user'], 403);
+        }
+
         $conversation = Conversation::getOrCreate($auth, $user);
 
         return response()->json([
@@ -122,6 +150,7 @@ class MessengerController extends Controller
 
         $users = User::query()
             ->whereNotIn('id', $relatedIds)
+            ->when(! empty($blockedIds = $user->blockedRelationUserIds()), fn ($q) => $q->whereNotIn('id', $blockedIds))
             ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
                     ->orWhere('email', 'like', "%{$query}%");
@@ -149,6 +178,8 @@ class MessengerController extends Controller
             403
         );
 
+        $this->assertNotBlocked($user, $conversation->otherUser($user));
+
         $conversation->load(['userOne', 'userTwo']);
         $conversation->other_user = $conversation->otherUser($user);
         $conversation->lastMessage = $conversation->lastMessage;
@@ -167,6 +198,8 @@ class MessengerController extends Controller
             $conversation->user_one_id === $user->id || $conversation->user_two_id === $user->id,
             403
         );
+
+        $this->assertNotBlocked($user, $conversation->otherUser($user));
 
         $page = $request->get('page', 1);
         $perPage = 50;
@@ -234,6 +267,8 @@ class MessengerController extends Controller
             403
         );
 
+        $this->assertNotBlocked($user, $conversation->otherUser($user));
+
         $validated = $request->validate([
             'typing' => ['required', 'boolean'],
         ]);
@@ -250,6 +285,8 @@ class MessengerController extends Controller
             $conversation->user_one_id === $user->id || $conversation->user_two_id === $user->id,
             403
         );
+
+        $this->assertNotBlocked($user, $conversation->otherUser($user));
 
         $user->forceFill(['last_seen_at' => now()])->saveQuietly();
         $otherUser = $conversation->otherUser($user)->fresh();
@@ -268,6 +305,8 @@ class MessengerController extends Controller
             $conversation->user_one_id === $user->id || $conversation->user_two_id === $user->id,
             403
         );
+
+        $this->assertNotBlocked($user, $conversation->otherUser($user));
 
         $user->forceFill(['last_seen_at' => null])->saveQuietly();
 

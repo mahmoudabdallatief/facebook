@@ -25,6 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'avatar',
         'bio',
         'theme',
+        'profile_locked',
         'last_seen_at',
         'password',
     ];
@@ -58,6 +59,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'last_seen_at' => 'datetime',
+            'profile_locked' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -184,5 +186,81 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isOnline(): bool
     {
         return $this->last_seen_at && $this->last_seen_at->gt(now()->subMinutes(2));
+    }
+
+    public function blocks(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'user_id');
+    }
+
+    public function blockedBy(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocked_user_id');
+    }
+
+    /**
+     * IDs of users this user has blocked, users that blocked this user, and self.
+     */
+    public function blockedOrBlockingUserIds(): array
+    {
+        return $this->blocks()->pluck('blocked_user_id')
+            ->merge($this->blockedBy()->pluck('user_id'))
+            ->push($this->id)
+            ->unique()
+            ->all();
+    }
+
+    /**
+     * IDs of users this user has blocked or that blocked this user (excludes self).
+     */
+    public function blockedRelationUserIds(): array
+    {
+        return $this->blocks()->pluck('blocked_user_id')
+            ->merge($this->blockedBy()->pluck('user_id'))
+            ->unique()
+            ->all();
+    }
+
+    public function hasBlockRelationWith(User $other): bool
+    {
+        return $this->hasBlocked($other) || $this->isBlockedBy($other);
+    }
+
+    public function blockedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_blocks', 'user_id', 'blocked_user_id')
+            ->withTimestamps();
+    }
+
+    public function isBlockedBy(User $other): bool
+    {
+        return $this->blockedBy()->where('user_id', $other->id)->exists();
+    }
+
+    public function hasBlocked(User $other): bool
+    {
+        return $this->blocks()->where('blocked_user_id', $other->id)->exists();
+    }
+
+    public function isProfileLocked(): bool
+    {
+        return (bool) $this->profile_locked;
+    }
+
+    public function profileVisibleTo(User $viewer): bool
+    {
+        if ($this->is($viewer)) {
+            return true;
+        }
+
+        if ($this->isBlockedBy($viewer) || $viewer->hasBlocked($this)) {
+            return false;
+        }
+
+        if ($this->isProfileLocked() && ! $this->isFriendWith($viewer)) {
+            return false;
+        }
+
+        return true;
     }
 }

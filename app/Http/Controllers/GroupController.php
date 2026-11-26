@@ -83,7 +83,7 @@ class GroupController extends Controller
             ? $group->posts()->with([
                 'user', 'media', 'group', 'originalPost.user', 'originalPost.media',
                 'originalPost.group', 'originalPost.page',
-            ])->latest()->paginate(20)->withQueryString()
+            ])->visibleTo($user)->latest()->paginate(20)->withQueryString()
             : Post::query()->whereRaw('1 = 0')->paginate(20);
 
         return view('groups.show', [

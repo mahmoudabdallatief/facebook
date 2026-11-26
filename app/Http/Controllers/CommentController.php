@@ -27,6 +27,7 @@ class CommentController extends Controller
         if (isset($validated['parent_id'])) {
             $parent = Comment::where('id', $validated['parent_id'])
                 ->where('post_id', $post->id)
+                ->with('user')
                 ->first();
 
             if (! $parent) {
@@ -34,6 +35,9 @@ class CommentController extends Controller
                     'success' => false,
                     'message' => __('app.comment_parent_invalid'),
                 ], 422);
+            }
+            if ($request->user()->hasBlockRelationWith($parent->user)) {
+                return response()->json(['success' => false, 'message' => __('app.comment_blocked_interaction')], 403);
             }
         }
 
@@ -139,23 +143,25 @@ class CommentController extends Controller
             }
         }
 
-        return $this->collectionToArray($roots);
+        return $this->collectionToArray($roots, auth()->user());
     }
 
-    private function collectionToArray(array $comments): array
+    private function collectionToArray(array $comments, $viewer): array
     {
         $result = [];
 
         foreach ($comments as $comment) {
+            $blockedForViewer = $viewer && $viewer->hasBlockRelationWith($comment->user);
             $item = [
                 'id' => $comment->id,
                 'body' => $comment->body,
+                'blocked_for_viewer' => (bool) $blockedForViewer,
                 'user' => $comment->user,
                 'created_at' => $comment->created_at,
                 'reaction_counts' => $comment->reactionCounts(),
                 'total_reactions' => $comment->reactions()->count(),
                 'user_reaction' => $comment->userReaction(auth()->user()),
-                'children' => $this->collectionToArray((array) $comment->children_list ?? []),
+                'children' => $this->collectionToArray((array) $comment->children_list ?? [], $viewer),
             ];
             unset($item['children_list']);
             $result[] = $item;

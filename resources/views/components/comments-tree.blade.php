@@ -1,4 +1,4 @@
-@props(['post', 'comments'])
+@props(['post', 'comments' => []])
 
 @php
 $me = auth()->user();
@@ -13,7 +13,7 @@ $icons = [
 ];
 @endphp
 
-@if($comments->isEmpty())
+@if(empty($comments))
     <p class="text-xs text-center text-fb-muted dark:text-zinc-500 py-4">{{ __('app.no_comments_yet') }}</p>
 @else
     @foreach($comments as $comment)
