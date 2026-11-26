@@ -8,6 +8,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class SettingsController extends Controller
@@ -191,7 +194,7 @@ class SettingsController extends Controller
 
         $validated = $request->validate([
             'password' => ['required', 'string'],
-            'confirm' => ['required', 'boolean', 'accepted'],
+            'confirm' => ['required', 'accepted'],
         ]);
 
         if (! Hash::check($validated['password'], $user->password)) {
@@ -199,15 +202,59 @@ class SettingsController extends Controller
                 ->withErrors(['password' => __('app.invalid_password')]);
         }
 
-        // تسجيل الخروج وإبطال الجلسة قبل حذف الحساب لتجنب إعادة الصفقة
-        // المفتوحة في بيئة الاختبار (RefreshDatabase + SQLite).
+        // Collect uploaded files before cascading deletion removes their records.
+        $files = collect();
+        if ($user->avatar && ! str_starts_with($user->avatar, 'http')) {
+            $avatarPath = str_replace('storage/', '', $user->avatar);
+            $files->push([
+                'disk' => str_starts_with($user->avatar, 'avatars/') && ! str_contains($avatarPath, '..')
+                    ? 'public_root'
+                    : 'public',
+                'path' => $avatarPath,
+            ]);
+        }
+
+        $postIds = $user->posts()->pluck('id');
+        $files = $files->merge(\App\Models\PostMedia::query()
+            ->whereIn('post_id', $postIds)->whereNotNull('path')->get(['disk', 'path']));
+        $files = $files->merge(\App\Models\MessageMedia::query()
+            ->where('user_id', $user->id)->whereNotNull('path')->get(['disk', 'path']));
+
+        foreach ([$user->pages()->get(), $user->groups()->get()] as $ownedEntities) {
+            foreach ($ownedEntities as $entity) {
+                foreach ([$entity->avatar, $entity->cover_image] as $path) {
+                    if ($path && ! str_starts_with($path, 'http')) {
+                        $files->push(['disk' => 'public', 'path' => str_replace('storage/', '', $path)]);
+                    }
+                }
+            }
+        }
+
+        $deleted = DB::transaction(function () use ($user): int {
+            // Sessions and reset tokens are not constrained to users by foreign keys.
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+            DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+
+            // Delete the account row explicitly and only continue when it was removed.
+            return DB::table('users')->where('id', $user->id)->delete();
+        });
+
+        if ($deleted !== 1) {
+            return back(fallback: route('settings.index'))
+                ->withErrors(['account' => __('app.account_delete_failed')]);
+        }
+
+        foreach ($files->unique(fn ($file) => $file['disk'].':'.$file['path']) as $file) {
+            if ($file['disk'] === 'public_root') {
+                File::delete(public_path($file['path']));
+            } else {
+                Storage::disk($file['disk'])->delete($file['path']);
+            }
+        }
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-
-        $user->blockedBy()->delete();
-        $user->blocks()->delete();
-        $user->delete();
 
         return redirect()->route('home')
             ->with('status', __('app.account_deleted'));

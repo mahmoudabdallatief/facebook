@@ -143,6 +143,7 @@ return [
     'confirm_delete_account' => 'I agree to permanently delete my account.',
     'invalid_password' => 'Invalid password.',
     'account_deleted' => 'Your account has been deleted.',
+    'account_delete_failed' => 'Your account could not be deleted. Please try again.',
 
     'friends' => 'Friends',
     'friends_and_following' => 'Friends & Requests',

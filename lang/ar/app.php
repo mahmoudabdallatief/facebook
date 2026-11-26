@@ -144,6 +144,7 @@ return [
     'confirm_delete_account' => 'أوافق على حذف حسابي نهائياً.',
     'invalid_password' => 'كلمة المرور غير صحيحة.',
     'account_deleted' => 'تم حذف حسابك بنجاح.',
+    'account_delete_failed' => 'تعذر حذف الحساب. حاول مرة أخرى.',
 
     'friends' => 'الأصدقاء',
     'friends_and_following' => 'الأصدقاء والطلبات',

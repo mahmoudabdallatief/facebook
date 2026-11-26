@@ -4,6 +4,18 @@
 
 @section('content')
 <div class="space-y-6">
+    @if (session('status'))
+        <div role="status" class="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-300">
+            {{ session('status') }}
+        </div>
+    @endif
+
+    @if ($errors->has('password') || $errors->has('confirm'))
+        <div role="alert" class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
+            {{ $errors->first('password') ?: $errors->first('confirm') }}
+        </div>
+    @endif
+
     <div>
         <h1 class="text-2xl font-bold">{{ __('app.settings') }}</h1>
         <p class="mt-1 text-sm text-fb-muted dark:text-zinc-400">{{ __('app.settings_description') }}</p>
@@ -170,7 +182,7 @@
             </div>
 
             <div class="space-y-1">
-                <input type="checkbox" id="delete-confirm" name="confirm" required class="mt-0.5">
+                <input type="checkbox" id="delete-confirm" name="confirm" value="1" required class="mt-0.5">
                 <label for="delete-confirm" class="text-sm text-fb-text dark:text-zinc-200">
                     {{ __('app.confirm_delete_account') }}
                 </label>
@@ -243,5 +255,10 @@
 
         })();
     </script>
+    @if ($errors->has('password') || $errors->has('confirm'))
+        <script>
+            document.addEventListener('DOMContentLoaded', () => openModal('delete-account-modal'));
+        </script>
+    @endif
 </div>
 @endsection
