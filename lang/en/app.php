@@ -375,4 +375,7 @@ return [
     'shared_by_user' => 'Shared by :name',
     'comment_on_post' => 'Comment on post',
     'reply_to_comment' => 'Reply to comment',
+    'click_to_play_video' => 'Click to load & play video',
+    'video_label' => 'Video',
+    'show_more_media' => 'Show :count more items',
 ];

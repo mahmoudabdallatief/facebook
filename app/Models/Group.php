@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasReactions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Group extends Model
 {
+    use HasReactions;
     protected $fillable = [
         'user_id',
         'name',
@@ -69,36 +70,6 @@ class Group extends Model
         return $this->hasMany(Post::class, 'group_id')->latest();
     }
 
-    public function reactions(): MorphMany
-    {
-        return $this->morphMany(Reaction::class, 'reactionable');
-    }
-
-    public function reactionCounts(): array
-    {
-        $counts = [];
-
-        foreach (Reaction::REACTION_TYPES as $type) {
-            $counts[$type] = $this->reactions()->where('reaction_type', $type)->count();
-        }
-
-        return $counts;
-    }
-
-    public function totalReactions(): int
-    {
-        return $this->reactions()->count();
-    }
-
-    public function userReaction(?User $user): ?string
-    {
-        if (! $user) {
-            return null;
-        }
-
-        return $this->reactions()->where('user_id', $user->id)->value('reaction_type');
-    }
-
     public function memberRole(?User $user): ?string
     {
         if (! $user) {
@@ -107,6 +78,10 @@ class Group extends Model
 
         if ($this->user_id === $user->id) {
             return 'admin';
+        }
+
+        if ($this->relationLoaded('members')) {
+            return $this->members->firstWhere('user_id', $user->id)?->role;
         }
 
         return $this->members()->where('user_id', $user->id)->value('role');

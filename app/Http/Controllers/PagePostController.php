@@ -80,15 +80,19 @@ class PagePostController extends Controller
 
     public function show(Page $page, Post $post): View
     {
+        $me = auth()->user();
+        $me?->loadMissing(['blocks', 'blockedBy']);
+        $post->loadMissing(['user', 'page.members:id,page_id,user_id,role', 'group.members:id,group_id,user_id,role']);
+
         $this->authorize('view', $post);
 
         if ($post->page_id !== $page->id) {
             abort(404);
         }
 
-        $post->load(['user', 'media', 'page', 'originalPost.user', 'originalPost.media', 'originalPost.group', 'originalPost.page']);
+        $page->loadMissing('members:id,page_id,user_id,role');
+        $post->loadFeedRelations($me);
 
-        $me = auth()->user();
         $memberRole = $page->memberRole($me);
         $canManage = $page->canManage($me);
 
@@ -102,13 +106,12 @@ class PagePostController extends Controller
 
     public function edit(Page $page, Post $post): View
     {
+        $post->loadMissing(['media', 'page.members:id,page_id,user_id,role']);
         $this->authorize('update', $post);
 
         if ($post->page_id !== $page->id) {
             abort(404);
         }
-
-        $post->load('media');
 
         return view('pages.posts.edit', [
             'page' => $page,
@@ -199,6 +202,7 @@ class PagePostController extends Controller
 
     public function destroy(Request $request, Page $page, Post $post): RedirectResponse
     {
+        $post->loadMissing(['media', 'page.members:id,page_id,user_id,role']);
         $this->authorize('delete', $post);
 
         if ($post->page_id !== $page->id) {

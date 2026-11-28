@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\{RedirectResponse, Request};
 use Illuminate\View\View;
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
 
 use App\Models\{Friendship, PostMedia, User};
-use App\Notifications\ActivityNotification;
-
+use App\Models\Friendship;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 class FriendController extends Controller
 {
     public function index(Request $request): View
     {
         $user = $request->user();
+        $user->loadMissing(['friendsOfMine', 'friendOf', 'blocks', 'blockedBy']);
 
         $friends = $user->friends();
 
@@ -41,15 +45,9 @@ class FriendController extends Controller
 
         $suggestions = User::query()
             ->whereNotIn('id', $relatedIds)
-            ->when(! empty($blockedIds = $user->blockedRelationUserIds()), fn ($q) => $q->whereNotIn('id', $blockedIds))
             ->inRandomOrder()
             ->limit(12)
             ->get();
-
-        $user->notifications()
-            ->where('read_at', null)
-            ->whereIn('type', ['friend_request', 'friend_accepted'])
-            ->update(['read_at' => now()]);
 
         return view('friends.index', [
             'friends' => $friends,
@@ -89,8 +87,6 @@ class FriendController extends Controller
             'status' => 'pending',
         ]);
 
-        $user->notify(new ActivityNotification('friend_request', ['user_id' => $auth->id, 'user_name' => $auth->name]));
-
         return back()->with('status', __('app.friend_request_sent'));
     }
 
@@ -101,8 +97,6 @@ class FriendController extends Controller
             abort(403);
         }
         $friendship->update(['status' => 'accepted', 'accepted_at' => now()]);
-
-        $friendship->user->notify(new ActivityNotification('friend_accepted', ['user_id' => $auth->id, 'user_name' => $auth->name]));
 
         return back()->with('status', __('app.friend_request_accepted'));
     }

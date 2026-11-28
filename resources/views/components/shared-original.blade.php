@@ -6,7 +6,7 @@
             @if($original->isPagePost() && $original->page)
             <a href="{{ route('pages.show', $original->page) }}">
                 @if($original->page->avatarUrl())
-                    <img src="{{ $original->page->avatarUrl() }}" alt="" class="h-8 w-8 rounded-full object-cover">
+                    <img src="{{ $original->page->avatarUrl() }}" alt="" loading="lazy" decoding="async" class="h-8 w-8 rounded-full object-cover">
                 @else
                     <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fb-blue text-xs font-bold text-white">{{ mb_substr($original->page->name, 0, 1) }}</span>
                 @endif
@@ -14,7 +14,7 @@
             @else
             <a href="{{ route('profile.show', $original->user) }}">
                 @if($original->user->avatarUrl())
-                    <img src="{{ $original->user->avatarUrl() }}" alt="" class="h-8 w-8 rounded-full object-cover">
+                    <img src="{{ $original->user->avatarUrl() }}" alt="" loading="lazy" decoding="async" class="h-8 w-8 rounded-full object-cover">
                 @else
                     <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fb-blue text-xs font-bold text-white">{{ mb_substr($original->user->name, 0, 1) }}</span>
                 @endif
@@ -53,15 +53,7 @@
         @endif
 
         @if($original->media->isNotEmpty())
-            <div class="grid gap-1 {{ $original->media->count() === 1 ? 'grid-cols-1' : ($original->media->count() === 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3') }}">
-                @foreach($original->media as $media)
-                    @if($media->type === 'video')
-                        <video src="{{ $media->url }}" controls class="h-56 w-full object-cover"></video>
-                    @else
-                        <img src="{{ $media->url }}" alt="" class="h-56 w-full object-cover">
-                    @endif
-                @endforeach
-            </div>
+            <x-media-grid :media="$original->media" height-class="h-56" />
         @endif
     </div>
 @else

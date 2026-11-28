@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasReactions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Collection;
 
 class Comment extends Model
 {
+    use HasReactions;
     protected $fillable = [
         'post_id',
         'user_id',
@@ -73,38 +74,12 @@ class Comment extends Model
         return $depth;
     }
 
-    public function reactions(): MorphMany
-    {
-        return $this->morphMany(Reaction::class, 'reactionable');
-    }
-
-    public function reactionCounts(): array
-    {
-        $counts = [];
-
-        foreach (Reaction::REACTION_TYPES as $type) {
-            $counts[$type] = $this->reactions()->where('reaction_type', $type)->count();
-        }
-
-        return $counts;
-    }
-
-    public function userReaction(?User $user): ?string
-    {
-        if (! $user) {
-            return null;
-        }
-
-        return $this->reactions()->where('user_id', $user->id)->value('reaction_type');
-    }
-
-    public function totalReactions(): int
-    {
-        return $this->reactions()->count();
-    }
-
     public function getReplyCount(): int
     {
+        if ($this->relationLoaded('children')) {
+            return $this->children->count();
+        }
+
         return $this->children()->count();
     }
 
@@ -151,10 +126,12 @@ class Comment extends Model
         return $roots;
     }
 
-    public function toTreeArray(?User $viewer = null): array
+    public function toTreeArray(?User $viewer = null, ?int $depth = null): array
     {
         $me = $viewer ?? auth()->user();
         $blockedForViewer = $me && $me->hasBlockRelationWith($this->user);
+        $resolvedDepth = $depth ?? $this->depth();
+        $children = $this->relationLoaded('children') ? $this->children : collect();
 
         return [
             'id' => $this->id,
@@ -164,7 +141,7 @@ class Comment extends Model
             'user' => $this->user,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            'depth' => $this->depth(),
+            'depth' => $resolvedDepth,
             'is_reply' => $this->isReply(),
             'parent_id' => $this->parent_id,
             'reaction_counts' => $this->reactionCounts(),
@@ -172,7 +149,7 @@ class Comment extends Model
             'user_reaction' => $this->userReaction($me),
             'can_edit' => $me && $me->id === $this->user_id,
             'can_delete' => $me && $me->id === $this->user_id,
-            'children' => $this->children->map(fn ($child) => $child->toTreeArray($me))->toArray(),
+            'children' => $children->map(fn ($child) => $child->toTreeArray($me, $resolvedDepth + 1))->toArray(),
         ];
     }
 }

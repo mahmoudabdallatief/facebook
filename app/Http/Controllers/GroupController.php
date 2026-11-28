@@ -21,7 +21,7 @@ class GroupController extends Controller
             ->withCount(['members', 'admins'])
             ->visibleTo($user)
             ->latest()
-            ->paginate(20)
+            ->paginate(18)
             ->withQueryString();
 
         return view('groups.index', [
@@ -76,15 +76,18 @@ class GroupController extends Controller
         $this->authorize('view', $group);
 
         $user = $request->user();
-        $group->load('owner')->loadCount(['members', 'admins']);
+        $user?->loadMissing(['blocks', 'blockedBy']);
+        $group->load(['owner', 'members:id,group_id,user_id,role'])->loadCount(['members', 'admins']);
 
         $memberRole = $group->memberRole($user);
         $posts = $memberRole !== null
-            ? $group->posts()->with([
-                'user', 'media', 'group', 'originalPost.user', 'originalPost.media',
-                'originalPost.group', 'originalPost.page',
-            ])->visibleTo($user)->latest()->paginate(20)->withQueryString()
-            : Post::query()->whereRaw('1 = 0')->paginate(20);
+            ? $group->posts()
+                ->withFeedRelations($user)
+                ->visibleTo($user)
+                ->latest()
+                ->paginate(12)
+                ->withQueryString()
+            : Post::query()->whereRaw('1 = 0')->paginate(12);
 
         return view('groups.show', [
             'group' => $group,

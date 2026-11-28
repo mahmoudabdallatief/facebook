@@ -16,12 +16,13 @@ class PostController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        $user?->loadMissing(['blocks', 'blockedBy']);
 
         $posts = Post::query()
-            ->with(['user', 'media'])
+            ->withFeedRelations($user)
             ->visibleTo($user)
             ->latest()
-            ->paginate(20)
+            ->paginate(12)
             ->withQueryString();
 
         return view('posts.index', [
@@ -71,9 +72,8 @@ class PostController extends Controller
 
     public function edit(Post $post): View
     {
+        $post->loadMissing(['media', 'page.members:id,page_id,user_id,role', 'group.members:id,group_id,user_id,role']);
         $this->authorize('update', $post);
-
-        $post->load('media');
 
         return view('posts.edit', [
             'post' => $post,
@@ -159,8 +159,9 @@ class PostController extends Controller
             ->with('status', __('app.post_updated'));
     }
 
-    public function destroy(Request $request, Post $post): RedirectResponse
+    public function destroy(Request $request, Post $post): JsonResponse|RedirectResponse
     {
+        $post->loadMissing(['media', 'page.members:id,page_id,user_id,role']);
         $this->authorize('delete', $post);
 
         foreach ($post->media as $m) {
@@ -184,9 +185,13 @@ class PostController extends Controller
 
     public function show(Post $post): View
     {
+        $viewer = auth()->user();
+        $viewer?->loadMissing(['blocks', 'blockedBy']);
+        $post->loadMissing(['user', 'page.members:id,page_id,user_id,role', 'group.members:id,group_id,user_id,role']);
+
         $this->authorize('view', $post);
 
-        $post->load(['user', 'media']);
+        $post->loadFeedRelations($viewer);
 
         return view('posts.show', [
             'post' => $post,

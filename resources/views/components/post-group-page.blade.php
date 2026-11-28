@@ -46,12 +46,12 @@ if ($post->isGroupPost() && $post->group) {
 }
 @endphp
 
-<article id="post-{{ $post->id }}" class="rounded-xl border border-fb-border bg-fb-surface shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+<article id="post-{{ $post->id }}" class="post-card-perf rounded-xl border border-fb-border bg-fb-surface shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-start gap-3 p-4">
         @if($post->isPagePost() && $post->page)
         <a href="{{ route('pages.show', $post->page) }}">
             @if($post->page->avatarUrl())
-                <img src="{{ $post->page->avatarUrl() }}" alt="" class="h-10 w-10 rounded-full object-cover">
+                <img src="{{ $post->page->avatarUrl() }}" alt="" loading="lazy" decoding="async" class="h-10 w-10 rounded-full object-cover">
             @else
                 <span class="flex h-10 w-10 items-center justify-center rounded-full bg-fb-blue text-sm font-bold text-white">{{ mb_substr($post->page->name, 0, 1) }}</span>
             @endif
@@ -59,7 +59,7 @@ if ($post->isGroupPost() && $post->group) {
         @else
         <a href="{{ route('profile.show', $post->user) }}">
             @if($post->user->avatarUrl())
-                <img src="{{ $post->user->avatarUrl() }}" alt="" class="h-10 w-10 rounded-full object-cover">
+                <img src="{{ $post->user->avatarUrl() }}" alt="" loading="lazy" decoding="async" class="h-10 w-10 rounded-full object-cover">
             @else
                 <span class="flex h-10 w-10 items-center justify-center rounded-full bg-fb-blue text-sm font-bold text-white">{{ mb_substr($post->user->name, 0, 1) }}</span>
             @endif
@@ -74,7 +74,9 @@ if ($post->isGroupPost() && $post->group) {
                 @endif
 
                 @if($post->isGroupPost() && $post->group)
-                    @php($role = $post->group->memberRole($post->user))
+                    @php
+                        $role = $post->group->memberRole($post->user);
+                    @endphp
                     @if($role)
                         <span class="text-xs text-fb-blue">{{ $post->group->getRoleLabel($role) }}</span>
                     @endif
@@ -127,15 +129,7 @@ if ($post->isGroupPost() && $post->group) {
     @if($post->isShare())
         @include('components.shared-original', ['original' => $shareTarget, 'me' => $me])
     @elseif($post->media->isNotEmpty())
-        <div class="grid gap-1 {{ $post->media->count() === 1 ? 'grid-cols-1' : ($post->media->count() === 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3') }}">
-            @foreach($post->media as $media)
-                @if($media->type === 'video')
-                    <video src="{{ $media->url }}" controls class="h-64 w-full object-cover rounded-t-xl"></video>
-                @else
-                    <img src="{{ $media->url }}" alt="" class="h-64 w-full object-cover rounded-t-xl">
-                @endif
-            @endforeach
-        </div>
+        <x-media-grid :media="$post->media" height-class="h-64" rounded-class="rounded-t-xl" />
     @endif
 
     <x-reactions
@@ -190,7 +184,12 @@ if ($post->isGroupPost() && $post->group) {
 
         <div id="comments-list-{{ $post->id }}" data-empty-message="{{ __('app.no_comments_yet') }}" data-deleted-message="{{ __('app.comment_deleted') }}" class="p-4 border-t border-fb-border dark:border-zinc-800">
             <div id="comments-container-{{ $post->id }}">
-                @include('components.comments-tree', ['post' => $post, 'comments' => \App\Models\Comment::buildTree($post->allComments()->with(['user', 'reactions'])->get())])
+                @php
+                    $commentsCollection = $post->relationLoaded('allComments')
+                        ? $post->allComments
+                        : $post->allComments()->with(['user', 'reactions.user'])->get();
+                @endphp
+                @include('components.comments-tree', ['post' => $post, 'comments' => \App\Models\Comment::buildTree($commentsCollection)])
             </div>
         </div>
     </div>

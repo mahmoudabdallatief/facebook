@@ -19,3 +19,13 @@
     --color-fb-muted: #65676b;
     --color-fb-border: #dddfe2;
 }
+
+.post-card-perf {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 420px;
+}
+
+.card-grid-perf {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 260px;
+}

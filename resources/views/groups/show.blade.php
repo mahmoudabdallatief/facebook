@@ -7,7 +7,7 @@
     <!-- Group header -->
     <div class="relative overflow-hidden rounded-xl border border-fb-border bg-fb-surface shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         @if($group->coverUrl())
-            <img src="{{ $group->coverUrl() }}" alt="" class="h-48 w-full object-cover sm:h-64">
+            <img src="{{ $group->coverUrl() }}" alt="" loading="lazy" decoding="async" class="h-48 w-full bg-zinc-200 object-cover dark:bg-zinc-800 sm:h-64">
         @else
             <div class="h-48 w-full bg-gradient-to-br from-fb-blue to-blue-700 dark:from-blue-900 dark:to-zinc-800 sm:h-64"></div>
         @endif
@@ -15,7 +15,7 @@
         <div class="px-4">
             <div class="-mt-14 flex items-end justify-between gap-3 sm:-mt-16">
                 @if($group->avatarUrl())
-                    <img src="{{ $group->avatarUrl() }}" alt="" class="h-28 w-28 shrink-0 rounded-full border-4 border-fb-surface object-cover dark:border-zinc-900">
+                    <img src="{{ $group->avatarUrl() }}" alt="" loading="lazy" decoding="async" class="h-28 w-28 shrink-0 rounded-full border-4 border-fb-surface object-cover dark:border-zinc-900">
                 @else
                     <span class="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-fb-surface bg-fb-blue text-3xl font-bold text-white dark:border-zinc-900">{{ mb_substr($group->name, 0, 1) }}</span>
                 @endif

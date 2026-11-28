@@ -21,7 +21,7 @@ $icons = [
     <div class="flex gap-3">
         <div class="flex-shrink-0">
             @if($comment->user->avatarUrl())
-                <img src="{{ $comment->user->avatarUrl() }}" alt="" class="h-8 w-8 rounded-full object-cover">
+                <img src="{{ $comment->user->avatarUrl() }}" alt="" loading="lazy" decoding="async" class="h-8 w-8 rounded-full object-cover">
             @else
                 <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fb-blue text-xs font-bold text-white">{{ mb_substr($comment->user->name, 0, 1) }}</span>
             @endif
@@ -42,7 +42,7 @@ $icons = [
                     :reactionable="$comment"
                     :user-reaction="$userReaction"
                     :counts="$comment->reactionCounts()"
-                    :total="$comment->total_reactions"
+                    :total="$comment->total_reactions ?? $comment->totalReactions()"
                     :url="route('comments.reactions.store', $comment)"
                 />
             </div>

@@ -376,4 +376,7 @@ return [
     'shared_by_user' => 'تمت المشاركة بواسطة :name',
     'comment_on_post' => 'تعليق على منشور',
     'reply_to_comment' => 'رد على تعليق',
+    'click_to_play_video' => 'اضغط لتشغيل الفيديو',
+    'video_label' => 'فيديو',
+    'show_more_media' => 'عرض :count وسائط إضافية',
 ];

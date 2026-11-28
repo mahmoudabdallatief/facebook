@@ -79,6 +79,7 @@ class CommentController extends Controller
 
     public function index(Post $post): JsonResponse
     {
+        auth()->user()?->loadMissing(['blocks', 'blockedBy']);
         $this->authorize('view', $post);
 
         // Load every level in one query, then assemble the tree in memory. Loading
@@ -159,8 +160,8 @@ class CommentController extends Controller
                 'user' => $comment->user,
                 'created_at' => $comment->created_at,
                 'reaction_counts' => $comment->reactionCounts(),
-                'total_reactions' => $comment->reactions()->count(),
-                'user_reaction' => $comment->userReaction(auth()->user()),
+                'total_reactions' => $comment->totalReactions(),
+                'user_reaction' => $comment->userReaction($viewer),
                 'children' => $this->collectionToArray((array) $comment->children_list ?? [], $viewer),
             ];
             unset($item['children_list']);

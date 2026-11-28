@@ -13,16 +13,16 @@
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         @forelse($pages as $page)
-            <a href="{{ route('pages.show', $page) }}" class="group block overflow-hidden rounded-xl border border-fb-border bg-fb-surface shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+            <a href="{{ route('pages.show', $page) }}" class="card-grid-perf group block overflow-hidden rounded-xl border border-fb-border bg-fb-surface shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
                 @if($page->coverUrl())
-                    <img src="{{ $page->coverUrl() }}" alt="" class="h-28 w-full object-cover">
+                    <img src="{{ $page->coverUrl() }}" alt="" loading="lazy" decoding="async" fetchpriority="low" class="h-28 w-full bg-zinc-200 object-cover dark:bg-zinc-800">
                 @else
                     <div class="h-28 bg-gradient-to-br from-fb-blue/80 to-blue-800 dark:from-blue-950 dark:to-zinc-800"></div>
                 @endif
                 <div class="flex items-start gap-3 p-4">
                     <div class="-mt-8 shrink-0 rounded-full bg-fb-surface p-1 dark:bg-zinc-900">
                         @if($page->avatarUrl())
-                            <img src="{{ $page->avatarUrl() }}" alt="" class="h-14 w-14 rounded-full object-cover">
+                            <img src="{{ $page->avatarUrl() }}" alt="" loading="lazy" decoding="async" class="h-14 w-14 rounded-full object-cover">
                         @else
                             <span class="flex h-14 w-14 items-center justify-center rounded-full bg-fb-blue text-xl font-bold text-white">{{ mb_substr($page->name, 0, 1) }}</span>
                         @endif

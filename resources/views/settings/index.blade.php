@@ -6,6 +6,12 @@ use App\Models\MessageMedia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Page;
+use App\Models\Group;
+use App\Models\Post;
+use App\Models\Comment;
 @extends('layouts.app')
 
 @section('title', __('app.settings'))

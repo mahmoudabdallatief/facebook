@@ -21,7 +21,7 @@ class PageController extends Controller
             ->withCount(['members', 'admins'])
             ->visibleTo($user)
             ->latest()
-            ->paginate(20)
+            ->paginate(18)
             ->withQueryString();
 
         return view('pages.index', [
@@ -75,12 +75,14 @@ class PageController extends Controller
     {
         $this->authorize('view', $page);
         $user = $request->user();
-        $page->load('owner')->loadCount(['members', 'admins']);
+        $user?->loadMissing(['blocks', 'blockedBy']);
+        $page->load(['owner', 'members:id,page_id,user_id,role'])->loadCount(['members', 'admins']);
 
-        $posts = $page->posts()->with([
-            'user', 'media', 'page', 'originalPost.user', 'originalPost.media',
-            'originalPost.group', 'originalPost.page',
-        ])->latest()->paginate(20)->withQueryString();
+        $posts = $page->posts()
+            ->withFeedRelations($user)
+            ->latest()
+            ->paginate(12)
+            ->withQueryString();
 
         $memberRole = $page->memberRole($user);
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Comment;
+use App\Models\Post;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
@@ -9,6 +11,7 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $user->loadMissing(['blocks', 'blockedBy']);
         $blockedIds = $user->blockedRelationUserIds();
 
         $notifications = $user->notifications()->latest()->take(200)->get();
@@ -21,7 +24,28 @@ class NotificationController extends Controller
 
         $notifications = $notifications->take(50);
 
-        return view('notifications.index', compact('notifications'));
+        $postIds = $notifications
+            ->pluck('data.post_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $commentIds = $notifications
+            ->filter(fn ($n) => empty($n->data['post_id']) && ! empty($n->data['comment_id']))
+            ->pluck('data.comment_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $notificationPosts = $postIds->isNotEmpty()
+            ? Post::with(['group', 'page'])->whereIn('id', $postIds)->get()->keyBy('id')
+            : collect();
+
+        $notificationComments = $commentIds->isNotEmpty()
+            ? Comment::with(['post.group', 'post.page'])->whereIn('id', $commentIds)->get()->keyBy('id')
+            : collect();
+
+        return view('notifications.index', compact('notifications', 'notificationPosts', 'notificationComments'));
     }
 
     public function unreadCount(Request $request)

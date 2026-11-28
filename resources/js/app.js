@@ -284,3 +284,70 @@ window.showToast = function showToast(message, type = 'error') {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 };
+
+// Click-to-load heavy video facades and expandable media grids
+function activateVideoFacade(facade) {
+  if (!facade || facade.dataset.videoActivated === '1') return;
+  const src = facade.dataset.videoSrc;
+  if (!src) return;
+
+  facade.dataset.videoActivated = '1';
+
+  // Pause other active videos so heavy streams do not compete for bandwidth
+  document.querySelectorAll('video').forEach((v) => {
+    if (!v.paused) {
+      try { v.pause(); } catch (_) {}
+    }
+  });
+
+  const video = document.createElement('video');
+  video.controls = true;
+  video.autoplay = true;
+  video.playsInline = true;
+  video.preload = 'metadata';
+  video.className = facade.dataset.videoClass || 'h-64 w-full object-cover bg-black';
+
+  const source = document.createElement('source');
+  source.src = src;
+  if (facade.dataset.videoType) {
+    source.type = facade.dataset.videoType;
+  }
+  video.appendChild(source);
+
+  facade.replaceWith(video);
+  const playPromise = video.play();
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch(() => {});
+  }
+}
+
+document.addEventListener('click', (event) => {
+  const expandBtn = event.target.closest('[data-expand-media-grid]');
+  if (expandBtn) {
+    const gallery = expandBtn.closest('[data-media-gallery]');
+    const extraContainer = gallery?.querySelector('[data-extra-media-container]');
+    if (extraContainer) {
+      extraContainer.classList.remove('hidden');
+      extraContainer.querySelectorAll('img[data-lazy-src]').forEach((img) => {
+        img.src = img.dataset.lazySrc;
+        img.removeAttribute('data-lazy-src');
+      });
+    }
+    expandBtn.remove();
+    return;
+  }
+
+  const facade = event.target.closest('[data-video-facade]');
+  if (facade) {
+    activateVideoFacade(facade);
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  const facade = event.target.closest('[data-video-facade]');
+  if (facade) {
+    event.preventDefault();
+    activateVideoFacade(facade);
+  }
+});

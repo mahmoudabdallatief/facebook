@@ -12,6 +12,7 @@ class GroupMemberController extends Controller
 {
     public function index(Group $group, Request $request): View
     {
+        $group->loadMissing('members:id,group_id,user_id,role');
         $this->authorize('view', $group);
         abort_if($group->privacy === 'private' && ! $group->isMember($request->user()), 403);
 

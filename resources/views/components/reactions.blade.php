@@ -12,10 +12,15 @@
     ];
     $me = auth()->user();
     $blockedForViewer = $me && $reactionable->user && $me->hasBlockRelationWith($reactionable->user);
-    $reactors = $reactionable->reactions()->with('user')->get();
+    if ($reactionable->relationLoaded('reactions')) {
+        $reactionable->reactions->loadMissing('user');
+        $reactors = $reactionable->reactions;
+    } else {
+        $reactors = $reactionable->reactions()->with('user')->get();
+    }
     if ($me) {
         $reactors = $reactors->reject(function ($r) use ($me) {
-            return $me->hasBlockRelationWith($r->user);
+            return $r->user && $me->hasBlockRelationWith($r->user);
         });
     }
 @endphp

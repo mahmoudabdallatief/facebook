@@ -21,6 +21,14 @@ class SearchController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        $user?->loadMissing([
+            'blocks',
+            'blockedBy',
+            'friendsOfMine',
+            'friendOf',
+            'sentFriendRequests',
+            'receivedFriendRequests',
+        ]);
 
         $query = trim($request->string('q')->toString());
         $type = $request->string('type')->toString();
@@ -87,9 +95,11 @@ class SearchController extends Controller
 
     private function searchPosts(string $booleanQuery, bool $limited)
     {
+        $viewer = auth()->user();
+
         $q = Post::query()
-            ->with(['user', 'media'])
-            ->visibleTo(auth()->user())
+            ->withFeedRelations($viewer)
+            ->visibleTo($viewer)
             ->whereRaw('MATCH(body) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
             ->latest();
 
@@ -118,9 +128,11 @@ class SearchController extends Controller
 
     private function searchShares(string $booleanQuery, bool $limited)
     {
+        $viewer = auth()->user();
+
         $q = Post::query()
-            ->with(['user', 'originalPost.user', 'media'])
-            ->visibleTo(auth()->user())
+            ->withFeedRelations($viewer)
+            ->visibleTo($viewer)
             ->whereNotNull('original_post_id')
             ->where(function ($q2) use ($booleanQuery): void {
                 $q2->whereRaw('MATCH(body) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])

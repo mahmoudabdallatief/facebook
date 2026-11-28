@@ -12,6 +12,7 @@ class PageMemberController extends Controller
 {
     public function index(Page $page, Request $request): View
     {
+        $page->loadMissing('members:id,page_id,user_id,role');
         $this->authorize('view', $page);
 
         $members = $page->members()

@@ -89,15 +89,19 @@ class GroupPostController extends Controller
 
     public function show(Group $group, Post $post): View
     {
+        $me = auth()->user();
+        $me?->loadMissing(['blocks', 'blockedBy']);
+        $post->loadMissing(['user', 'group.members:id,group_id,user_id,role', 'page.members:id,page_id,user_id,role']);
+
         $this->authorize('view', $post);
 
         if ($post->group_id !== $group->id) {
             abort(404);
         }
 
-        $post->load(['user', 'media', 'group', 'originalPost.user', 'originalPost.media', 'originalPost.group', 'originalPost.page']);
+        $group->loadMissing('members:id,group_id,user_id,role');
+        $post->loadFeedRelations($me);
 
-        $me = auth()->user();
         $memberRole = $group->memberRole($me);
         $canManage = $group->canManage($me);
 
@@ -111,13 +115,12 @@ class GroupPostController extends Controller
 
     public function edit(Group $group, Post $post): View
     {
+        $post->loadMissing(['media', 'group.members:id,group_id,user_id,role']);
         $this->authorize('update', $post);
 
         if ($post->group_id !== $group->id) {
             abort(404);
         }
-
-        $post->load('media');
 
         return view('groups.posts.edit', [
             'group' => $group,
@@ -210,6 +213,7 @@ class GroupPostController extends Controller
 
     public function destroy(Request $request, Group $group, Post $post): RedirectResponse
     {
+        $post->loadMissing('media');
         $this->authorize('delete', $post);
 
         if ($post->group_id !== $group->id) {

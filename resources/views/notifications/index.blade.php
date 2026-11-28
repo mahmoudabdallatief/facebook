@@ -17,7 +17,9 @@
                     $post = null;
                     
                     if (!empty($d['post_id'])) {
-                        $post = \App\Models\Post::with(['group', 'page'])->find($d['post_id']);
+                        $post = isset($notificationPosts)
+                            ? $notificationPosts->get($d['post_id'])
+                            : \App\Models\Post::with(['group', 'page'])->find($d['post_id']);
                         if ($post) {
                             if ($post->isGroupPost() && $post->group) {
                                 $url = route('groups.posts.show', ['group' => $post->group, 'post' => $post]);
@@ -28,7 +30,9 @@
                             }
                         }
                     } elseif (!empty($d['comment_id'])) {
-                        $comment = \App\Models\Comment::with('post.group', 'post.page')->find($d['comment_id']);
+                        $comment = isset($notificationComments)
+                            ? $notificationComments->get($d['comment_id'])
+                            : \App\Models\Comment::with('post.group', 'post.page')->find($d['comment_id']);
                         if ($comment && $comment->post) {
                             if ($comment->post->isGroupPost() && $comment->post->group) {
                                 $url = route('groups.posts.show', ['group' => $comment->post->group, 'post' => $comment->post]);

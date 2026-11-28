@@ -58,23 +58,30 @@ class ProfileController extends Controller
     public function show(User $user): View
     {
         $viewer = auth()->user();
+        $viewer?->loadMissing([
+            'blocks',
+            'blockedBy',
+            'friendsOfMine',
+            'friendOf',
+            'sentFriendRequests',
+            'receivedFriendRequests',
+        ]);
 
-        if ($viewer->hasBlockRelationWith($user)) {
+        if ($viewer && $viewer->hasBlockRelationWith($user)) {
             abort(403);
         }
 
-        if ($user->isProfileLocked() && ! $viewer->is($user)) {
+        if ($user->isProfileLocked() && (! $viewer || ! $viewer->is($user))) {
             return view('profile.locked', [
                 'profileUser' => $user,
             ]);
         }
 
-        $viewerId = $viewer->id;
-        $blockedIds = $viewer->blockedRelationUserIds();
+        $blockedIds = $viewer ? $viewer->blockedRelationUserIds() : [];
 
         $posts = $user->posts()
             ->whereNull('group_id')
-            ->with(['user', 'media'])
+            ->withFeedRelations($viewer)
             ->when(! empty($blockedIds), function ($q) use ($blockedIds): void {
                 $q->whereNotIn('user_id', $blockedIds)
                     ->whereNotExists(function ($q2) use ($blockedIds): void {
@@ -85,7 +92,8 @@ class ProfileController extends Controller
                     });
             })
             ->latest()
-            ->get();
+            ->paginate(12)
+            ->withQueryString();
 
         return view('profile.show', [
             'profileUser' => $user,

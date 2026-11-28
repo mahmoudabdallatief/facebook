@@ -110,6 +110,11 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isFriendWith(User $other): bool
     {
+        if ($this->relationLoaded('friendsOfMine') && $this->relationLoaded('friendOf')) {
+            return $this->friendsOfMine->contains('id', $other->id)
+                || $this->friendOf->contains('id', $other->id);
+        }
+
         $f = $this->friendshipWith($other);
 
         return $f !== null && $f->status === 'accepted';
@@ -117,11 +122,23 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function hasPendingRequestTo(User $other): bool
     {
+        if ($this->relationLoaded('sentFriendRequests')) {
+            return $this->sentFriendRequests->contains(
+                fn (Friendship $f) => $f->friend_id === $other->id && $f->status === 'pending'
+            );
+        }
+
         return $this->sentFriendRequests()->where('friend_id', $other->id)->where('status', 'pending')->exists();
     }
 
     public function hasPendingRequestFrom(User $other): bool
     {
+        if ($this->relationLoaded('receivedFriendRequests')) {
+            return $this->receivedFriendRequests->contains(
+                fn (Friendship $f) => $f->user_id === $other->id && $f->status === 'pending'
+            );
+        }
+
         return $this->receivedFriendRequests()->where('user_id', $other->id)->where('status', 'pending')->exists();
     }
 
@@ -203,8 +220,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function blockedOrBlockingUserIds(): array
     {
-        return $this->blocks()->pluck('blocked_user_id')
-            ->merge($this->blockedBy()->pluck('user_id'))
+        return collect($this->blockedRelationUserIds())
             ->push($this->id)
             ->unique()
             ->all();
@@ -215,8 +231,16 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function blockedRelationUserIds(): array
     {
-        return $this->blocks()->pluck('blocked_user_id')
-            ->merge($this->blockedBy()->pluck('user_id'))
+        $blocked = $this->relationLoaded('blocks')
+            ? $this->blocks->pluck('blocked_user_id')
+            : $this->blocks()->pluck('blocked_user_id');
+
+        $blockedBy = $this->relationLoaded('blockedBy')
+            ? $this->blockedBy->pluck('user_id')
+            : $this->blockedBy()->pluck('user_id');
+
+        return $blocked
+            ->merge($blockedBy)
             ->unique()
             ->all();
     }
@@ -234,11 +258,19 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isBlockedBy(User $other): bool
     {
+        if ($this->relationLoaded('blockedBy')) {
+            return $this->blockedBy->contains('user_id', $other->id);
+        }
+
         return $this->blockedBy()->where('user_id', $other->id)->exists();
     }
 
     public function hasBlocked(User $other): bool
     {
+        if ($this->relationLoaded('blocks')) {
+            return $this->blocks->contains('blocked_user_id', $other->id);
+        }
+
         return $this->blocks()->where('blocked_user_id', $other->id)->exists();
     }
 

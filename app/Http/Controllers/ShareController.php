@@ -14,6 +14,7 @@ class ShareController extends Controller
 {
     public function index(Post $post): View
     {
+        $post->loadMissing(['user', 'media', 'page.members:id,page_id,user_id,role', 'group.members:id,group_id,user_id,role']);
         $this->authorize('view', $post);
 
         $shares = $post->sharedPosts()

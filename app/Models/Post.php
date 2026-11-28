@@ -2,19 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\Concerns\HasReactions;
+use Illuminate\Database\Eloquent\{Builder, Model};
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
+use App\Models\PostMedia;
+use App\Models\User;
 
 class Post extends Model
 {
+    use HasReactions;
     protected $fillable = [
         'user_id',
-        'page_id',
-        'group_id',
-        'original_post_id',
         'body',
         'visibility',
     ];
@@ -74,6 +72,14 @@ class Post extends Model
 
     public function shareCount(): int
     {
+        if (array_key_exists('shared_posts_count', $this->attributes)) {
+            return (int) $this->attributes['shared_posts_count'];
+        }
+
+        if ($this->relationLoaded('sharedPosts')) {
+            return $this->sharedPosts->count();
+        }
+
         return $this->sharedPosts()->count();
     }
 
@@ -83,7 +89,82 @@ class Post extends Model
             return false;
         }
 
+        if (array_key_exists('shared_by_viewer_count', $this->attributes)) {
+            return (int) $this->attributes['shared_by_viewer_count'] > 0;
+        }
+
+        if ($this->relationLoaded('sharedPosts')) {
+            return $this->sharedPosts->contains('user_id', $user->id);
+        }
+
         return $this->sharedPosts()->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * Eager-loading relations map shared across feed, page, group, profile, and search queries.
+     *
+     * @return array<int|string, mixed>
+     */
+    public static function feedRelations(?User $viewer = null): array
+    {
+        return [
+            'user',
+            'media',
+            'page.members:id,page_id,user_id,role',
+            'group.members:id,group_id,user_id,role',
+            'reactions.user',
+            'allComments.user',
+            'allComments.reactions.user',
+            'originalPost' => function (BelongsTo $q) use ($viewer): void {
+                $q->with([
+                    'user',
+                    'media',
+                    'page.members:id,page_id,user_id,role',
+                    'group.members:id,group_id,user_id,role',
+                ])->withCount('sharedPosts');
+
+                if ($viewer) {
+                    $q->withCount([
+                        'sharedPosts as shared_by_viewer_count' => fn ($sq) => $sq->where('user_id', $viewer->id),
+                    ]);
+                }
+            },
+        ];
+    }
+
+    public function scopeWithFeedRelations(Builder $query, ?User $viewer = null): Builder
+    {
+        $query->with(self::feedRelations($viewer))->withCount('sharedPosts');
+
+        if ($viewer) {
+            $query->withCount([
+                'sharedPosts as shared_by_viewer_count' => fn (Builder $q) => $q->where('user_id', $viewer->id),
+            ]);
+        }
+
+        return $query;
+    }
+
+    public function loadFeedRelations(?User $viewer = null): self
+    {
+        $this->loadMissing(self::feedRelations($viewer))->loadCount('sharedPosts');
+
+        if ($viewer) {
+            $this->loadCount([
+                'sharedPosts as shared_by_viewer_count' => fn (Builder $q) => $q->where('user_id', $viewer->id),
+            ]);
+        }
+
+        if ($this->original_post_id && $this->originalPost && ! array_key_exists('shared_posts_count', $this->originalPost->getAttributes())) {
+            $this->originalPost->loadCount('sharedPosts');
+            if ($viewer) {
+                $this->originalPost->loadCount([
+                    'sharedPosts as shared_by_viewer_count' => fn (Builder $q) => $q->where('user_id', $viewer->id),
+                ]);
+            }
+        }
+
+        return $this;
     }
 
     public function canShareAgain(?User $user): bool
@@ -103,74 +184,16 @@ class Post extends Model
     public function scopeVisibleTo(Builder $query, ?User $viewer): Builder
     {
         if ($viewer === null) {
-            return $query->where(function ($q): void {
-                $q->whereNull('page_id')
-                    ->whereNull('group_id')
-                    ->where('visibility', 'public')
-                    ->orWhere(function ($q2): void {
-                        $q2->whereNotNull('group_id')
-                            ->whereExists(function ($q3): void {
-                                $q3->selectRaw('1')
-                                    ->from('groups')
-                                    ->whereColumn('groups.id', 'posts.group_id')
-                                    ->where('groups.privacy', 'public');
-                            });
-                    });
-            });
+            return $query->where('visibility', 'public');
         }
 
         $viewerId = $viewer->getKey();
-        $blockedIds = $viewer->blockedRelationUserIds();
 
-        return $query->where(function (Builder $q) use ($viewerId, $blockedIds): void {
-                $q->where(function (Builder $ownPost) use ($viewerId): void {
-                    $ownPost->where('user_id', $viewerId)
-                        ->whereNull('page_id');
-                })
-                ->orWhere(function (Builder $q2): void {
-                    $q2->whereNull('page_id')
-                        ->whereNull('group_id')
-                        ->where('visibility', 'public');
-                })
+        return $query->where(function (Builder $q) use ($viewerId): void {
+            $q->where('user_id', $viewerId)
+                ->orWhere('visibility', 'public')
                 ->orWhere(function (Builder $q2) use ($viewerId): void {
-                    $q2->whereNotNull('page_id')
-                        ->whereExists(function ($q3) use ($viewerId): void {
-                            $q3->selectRaw('1')
-                                ->from('pages')
-                                ->whereColumn('pages.id', 'posts.page_id')
-                                ->where(function ($q4) use ($viewerId): void {
-                                    $q4->where('user_id', $viewerId)
-                                        ->orWhereExists(function ($q5) use ($viewerId): void {
-                                            $q5->selectRaw('1')
-                                                ->from('page_members')
-                                                ->whereColumn('page_members.page_id', 'pages.id')
-                                                ->where('page_members.user_id', $viewerId);
-                                        });
-                                });
-                        });
-                })
-                ->orWhere(function (Builder $q2) use ($viewerId): void {
-                    $q2->whereNotNull('group_id')
-                        ->whereExists(function ($q3) use ($viewerId): void {
-                            $q3->selectRaw('1')
-                                ->from('groups')
-                                ->whereColumn('groups.id', 'posts.group_id')
-                                ->where(function ($q4) use ($viewerId): void {
-                                    $q4->where('privacy', 'public')
-                                        ->orWhere('user_id', $viewerId)
-                                        ->orWhereExists(function ($q5) use ($viewerId): void {
-                                            $q5->selectRaw('1')
-                                                ->from('group_members')
-                                                ->whereColumn('group_members.group_id', 'groups.id')
-                                                ->where('group_members.user_id', $viewerId);
-                                        });
-                                });
-                        });
-                })
-                ->orWhere(function (Builder $q2) use ($viewerId): void {
-                    $q2->whereNull('page_id')
-                        ->whereNull('group_id')
-                        ->where('visibility', 'friends')
+                    $q2->where('visibility', 'friends')
                         ->whereRaw('EXISTS (
                             SELECT 1 FROM friendships
                             WHERE status = "accepted"
@@ -179,15 +202,6 @@ class Post extends Model
                                 OR (friendships.friend_id = posts.user_id AND friendships.user_id = ?)
                             )
                         )', [$viewerId, $viewerId]);
-                });
-        })
-        ->when(! empty($blockedIds), function (Builder $q) use ($blockedIds): void {
-            $q->whereNotIn('posts.user_id', $blockedIds)
-                ->whereNotExists(function ($q2) use ($blockedIds): void {
-                    $q2->selectRaw('1')
-                        ->from('posts AS original')
-                        ->whereColumn('original.id', 'posts.original_post_id')
-                        ->whereIn('original.user_id', $blockedIds);
                 });
         });
     }
@@ -199,20 +213,8 @@ class Post extends Model
 
     public function canView(?User $viewer): bool
     {
-        if ($viewer !== null && $viewer->hasBlockRelationWith($this->user)) {
-            return false;
-        }
-
         if ($viewer !== null && $this->isOwnedBy($viewer)) {
             return true;
-        }
-
-        if ($this->isGroupPost() && $this->group) {
-            return $this->group->canView($viewer);
-        }
-
-        if ($this->isPagePost() && $this->page) {
-            return $this->page->canView($viewer);
         }
 
         if ($this->visibility === 'public') {
@@ -238,37 +240,15 @@ class Post extends Model
 
     public function commentCount(): int
     {
+        if (array_key_exists('all_comments_count', $this->attributes)) {
+            return (int) $this->attributes['all_comments_count'];
+        }
+
+        if ($this->relationLoaded('allComments')) {
+            return $this->allComments->count();
+        }
+
         return $this->allComments()->count();
-    }
-
-    public function reactions(): MorphMany
-    {
-        return $this->morphMany(Reaction::class, 'reactionable');
-    }
-
-    public function reactionCounts(): array
-    {
-        $counts = [];
-
-        foreach (Reaction::REACTION_TYPES as $type) {
-            $counts[$type] = $this->reactions()->where('reaction_type', $type)->count();
-        }
-
-        return $counts;
-    }
-
-    public function userReaction(?User $user): ?string
-    {
-        if (! $user) {
-            return null;
-        }
-
-        return $this->reactions()->where('user_id', $user->id)->value('reaction_type');
-    }
-
-    public function totalReactions(): int
-    {
-        return $this->reactions()->count();
     }
 
     public function getShareUrl(): string

@@ -97,6 +97,9 @@
                 </div>
             @endforelse
         </div>
+        @if(method_exists($posts, 'links'))
+            <div class="mt-4">{{ $posts->links() }}</div>
+        @endif
     </x-card>
 </div>
 

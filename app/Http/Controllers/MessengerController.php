@@ -13,12 +13,20 @@ class MessengerController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        $user->loadMissing(['friendsOfMine', 'friendOf', 'blocks', 'blockedBy']);
 
         $blockedIds = $user->blockedRelationUserIds();
 
         // إنشاء محادثات تلقائية للأصدقاء الذين ليس لديهم محادثة بعد (باستثناء المحظورين)
+        $existingPartnerIds = Conversation::query()
+            ->where('user_one_id', $user->id)
+            ->orWhere('user_two_id', $user->id)
+            ->get(['user_one_id', 'user_two_id'])
+            ->map(fn (Conversation $c) => $c->user_one_id === $user->id ? $c->user_two_id : $c->user_one_id)
+            ->flip();
+
         foreach ($user->friends() as $friend) {
-            if (! in_array($friend->id, $blockedIds, true)) {
+            if (! in_array($friend->id, $blockedIds, true) && ! $existingPartnerIds->has($friend->id)) {
                 Conversation::getOrCreate($user, $friend);
             }
         }
@@ -79,6 +87,7 @@ class MessengerController extends Controller
             403
         );
 
+        $conversation->loadMissing(['userOne', 'userTwo']);
         $this->assertNotBlocked($user, $conversation->otherUser($user));
 
         $otherUser = $conversation->otherUser($user);
@@ -178,12 +187,18 @@ class MessengerController extends Controller
             403
         );
 
+        $conversation->loadMissing(['userOne', 'userTwo']);
         $this->assertNotBlocked($user, $conversation->otherUser($user));
 
-        $conversation->load(['userOne', 'userTwo']);
+        $conversation->load([
+            'userOne',
+            'userTwo',
+            'lastMessage' => fn ($q) => $q->with(['sender', 'media']),
+        ])->loadCount(['messages as unread_count' => function ($q) use ($user) {
+            $q->where('sender_id', '!=', $user->id)
+                ->whereNull('read_at');
+        }]);
         $conversation->other_user = $conversation->otherUser($user);
-        $conversation->lastMessage = $conversation->lastMessage;
-        $conversation->unread_count = $conversation->getUnreadCount($user);
 
         return view('messenger.components.conversation-item', [
             'conversation' => $conversation,
@@ -199,6 +214,7 @@ class MessengerController extends Controller
             403
         );
 
+        $conversation->loadMissing(['userOne', 'userTwo']);
         $this->assertNotBlocked($user, $conversation->otherUser($user));
 
         $page = $request->get('page', 1);
@@ -267,6 +283,7 @@ class MessengerController extends Controller
             403
         );
 
+        $conversation->loadMissing(['userOne', 'userTwo']);
         $this->assertNotBlocked($user, $conversation->otherUser($user));
 
         $validated = $request->validate([
@@ -286,6 +303,7 @@ class MessengerController extends Controller
             403
         );
 
+        $conversation->loadMissing(['userOne', 'userTwo']);
         $this->assertNotBlocked($user, $conversation->otherUser($user));
 
         $user->forceFill(['last_seen_at' => now()])->saveQuietly();
@@ -306,6 +324,7 @@ class MessengerController extends Controller
             403
         );
 
+        $conversation->loadMissing(['userOne', 'userTwo']);
         $this->assertNotBlocked($user, $conversation->otherUser($user));
 
         $user->forceFill(['last_seen_at' => null])->saveQuietly();
