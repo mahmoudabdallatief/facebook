@@ -59,7 +59,7 @@ class MessengerController extends Controller
                     ->whereNull('read_at');
             }])
             ->orderByDesc('last_message_at')
-            ->paginate(20);
+            ->paginate(10);
 
         $conversations->getCollection()->transform(function ($conversation) use ($user) {
             $conversation->other_user = $conversation->otherUser($user);
@@ -68,6 +68,57 @@ class MessengerController extends Controller
 
         return view('messenger.index', [
             'conversations' => $conversations,
+        ]);
+    }
+
+    public function conversationsInfinite(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->loadMissing(['friendsOfMine', 'friendOf', 'blocks', 'blockedBy']);
+
+        $blockedIds = $user->blockedRelationUserIds();
+
+        $conversations = Conversation::query()
+            ->where(function ($q) use ($user) {
+                $q->where('user_one_id', $user->id)
+                    ->orWhere('user_two_id', $user->id);
+            })
+            ->when(! empty($blockedIds), function ($q) use ($user, $blockedIds) {
+                $q->whereNot(function ($q) use ($user, $blockedIds) {
+                    $q->where(function ($q2) use ($user, $blockedIds) {
+                        $q2->where('user_one_id', $user->id)
+                            ->whereIn('user_two_id', $blockedIds);
+                    })->orWhere(function ($q2) use ($user, $blockedIds) {
+                        $q2->where('user_two_id', $user->id)
+                            ->whereIn('user_one_id', $blockedIds);
+                    });
+                });
+            })
+            ->with([
+                'userOne',
+                'userTwo',
+                'lastMessage' => function ($q) {
+                    $q->with('sender', 'media');
+                },
+            ])
+            ->withCount(['messages as unread_count' => function ($q) use ($user) {
+                $q->where('sender_id', '!=', $user->id)
+                    ->whereNull('read_at');
+            }])
+            ->orderByDesc('last_message_at')
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $conversations->getCollection()->transform(function ($conversation) use ($user) {
+            $conversation->other_user = $conversation->otherUser($user);
+            return $conversation;
+        });
+
+        $html = view('messenger._conversations', ['conversations' => $conversations])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $conversations->hasMorePages() ? $conversations->currentPage() + 1 : null,
+            'has_more' => $conversations->hasMorePages(),
         ]);
     }
 

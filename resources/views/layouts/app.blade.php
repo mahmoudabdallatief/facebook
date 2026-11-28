@@ -47,6 +47,7 @@
     @auth
         @vite(['resources/js/messenger.js'])
     @endauth
+    <script src="{{ asset('js/infinite-scroll.js') }}" defer></script>
     @stack('scripts')
 </head>
 <body class="min-h-screen bg-fb-bg text-fb-text dark:bg-zinc-950 dark:text-zinc-100 font-sans antialiased">

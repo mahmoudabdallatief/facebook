@@ -4,33 +4,42 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Post;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
     public function index(Request $request)
     {
+        return $this->notificationsPage($request, false);
+    }
+
+    public function infinite(Request $request): JsonResponse
+    {
+        return $this->notificationsPage($request, true);
+    }
+
+    private function notificationsPage(Request $request, bool $json)
+    {
         $user = $request->user();
         $user->loadMissing(['blocks', 'blockedBy']);
         $blockedIds = $user->blockedRelationUserIds();
 
-        $notifications = $user->notifications()->latest()->take(200)->get();
+        $notifications = $user->notifications()->latest()->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
 
-        if (! empty($blockedIds)) {
-            $notifications = $notifications->reject(function ($notification) use ($blockedIds): bool {
+        $filtered = ! empty($blockedIds)
+            ? $notifications->getCollection()->reject(function ($notification) use ($blockedIds): bool {
                 return in_array($notification->data['user_id'] ?? null, $blockedIds, true);
-            });
-        }
+            })
+            : $notifications->getCollection();
 
-        $notifications = $notifications->take(50);
-
-        $postIds = $notifications
+        $postIds = $filtered
             ->pluck('data.post_id')
             ->filter()
             ->unique()
             ->values();
 
-        $commentIds = $notifications
+        $commentIds = $filtered
             ->filter(fn ($n) => empty($n->data['post_id']) && ! empty($n->data['comment_id']))
             ->pluck('data.comment_id')
             ->filter()
@@ -45,7 +54,21 @@ class NotificationController extends Controller
             ? Comment::with(['post.group', 'post.page'])->whereIn('id', $commentIds)->get()->keyBy('id')
             : collect();
 
-        return view('notifications.index', compact('notifications', 'notificationPosts', 'notificationComments'));
+        if ($json) {
+            $html = view('notifications._items', [
+                'notifications' => $filtered,
+                'notificationPosts' => $notificationPosts,
+                'notificationComments' => $notificationComments,
+            ])->render();
+
+            return response()->json([
+                'html' => $html,
+                'next_page' => $notifications->hasMorePages() ? $notifications->currentPage() + 1 : null,
+                'has_more' => $notifications->hasMorePages(),
+            ]);
+        }
+
+        return view('notifications.index', compact('filtered', 'notificationPosts', 'notificationComments', 'notifications'));
     }
 
     public function unreadCount(Request $request)

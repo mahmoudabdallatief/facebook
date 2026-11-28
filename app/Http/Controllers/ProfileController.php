@@ -92,12 +92,42 @@ class ProfileController extends Controller
                     });
             })
             ->latest()
-            ->paginate(12)
+            ->paginate(10)
             ->withQueryString();
 
         return view('profile.show', [
             'profileUser' => $user,
             'posts' => $posts,
+        ]);
+    }
+
+    public function infinite(Request $request, User $user): JsonResponse
+    {
+        $viewer = $request->user();
+        $viewer?->loadMissing(['blocks', 'blockedBy']);
+        $blockedIds = $viewer ? $viewer->blockedRelationUserIds() : [];
+
+        $posts = $user->posts()
+            ->whereNull('group_id')
+            ->withFeedRelations($viewer)
+            ->when(! empty($blockedIds), function ($q) use ($blockedIds): void {
+                $q->whereNotIn('user_id', $blockedIds)
+                    ->whereNotExists(function ($q2) use ($blockedIds): void {
+                        $q2->selectRaw('1')
+                            ->from('posts AS original')
+                            ->whereColumn('original.id', 'posts.original_post_id')
+                            ->whereIn('original.user_id', $blockedIds);
+                    });
+            })
+            ->latest()
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('profile._posts', ['posts' => $posts])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $posts->hasMorePages() ? $posts->currentPage() + 1 : null,
+            'has_more' => $posts->hasMorePages(),
         ]);
     }
 }

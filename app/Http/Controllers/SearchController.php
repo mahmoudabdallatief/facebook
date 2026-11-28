@@ -6,6 +6,7 @@ use App\Models\Group;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -90,7 +91,7 @@ class SearchController extends Controller
             ->whereRaw('MATCH(name, email) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
             ->latest();
 
-        return $limited ? $q->limit(self::LIMIT_ALL)->get() : $q->paginate(20)->withQueryString();
+        return $q->paginate(10, ['*'], 'page')->withQueryString();
     }
 
     private function searchPosts(string $booleanQuery, bool $limited)
@@ -103,7 +104,7 @@ class SearchController extends Controller
             ->whereRaw('MATCH(body) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
             ->latest();
 
-        return $limited ? $q->limit(self::LIMIT_ALL)->get() : $q->paginate(20)->withQueryString();
+        return $q->paginate(10, ['*'], 'page')->withQueryString();
     }
 
     private function searchGroups(string $booleanQuery, bool $limited)
@@ -113,7 +114,7 @@ class SearchController extends Controller
             ->whereRaw('MATCH(name) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
             ->latest();
 
-        return $limited ? $q->limit(self::LIMIT_ALL)->get() : $q->paginate(20)->withQueryString();
+        return $q->paginate(10, ['*'], 'page')->withQueryString();
     }
 
     private function searchPages(string $booleanQuery, bool $limited)
@@ -123,7 +124,7 @@ class SearchController extends Controller
             ->whereRaw('MATCH(name) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
             ->latest();
 
-        return $limited ? $q->limit(self::LIMIT_ALL)->get() : $q->paginate(20)->withQueryString();
+        return $q->paginate(10, ['*'], 'page')->withQueryString();
     }
 
     private function searchShares(string $booleanQuery, bool $limited)
@@ -142,6 +143,52 @@ class SearchController extends Controller
             })
             ->latest();
 
-        return $limited ? $q->limit(self::LIMIT_ALL)->get() : $q->paginate(20)->withQueryString();
+        return $q->paginate(10, ['*'], 'page')->withQueryString();
+    }
+
+    public function infinite(Request $request): JsonResponse
+    {
+        $query = trim($request->string('q')->toString());
+        $type = $request->string('type')->toString();
+
+        if (mb_strlen($query) < self::MIN_QUERY_LENGTH || ! in_array($type, ['people', 'posts', 'groups', 'pages', 'shares'], true)) {
+            return response()->json(['html' => '', 'next_page' => null, 'has_more' => false]);
+        }
+
+        $booleanQuery = $this->escapeBooleanQuery($query) . '*';
+        $viewer = auth()->user();
+
+        $paginator = match ($type) {
+            'people' => $this->searchPeople($booleanQuery, false),
+            'posts' => $this->searchPosts($booleanQuery, false),
+            'groups' => $this->searchGroups($booleanQuery, false),
+            'pages' => $this->searchPages($booleanQuery, false),
+            'shares' => $this->searchShares($booleanQuery, false),
+            default => null,
+        };
+
+        if (! $paginator) {
+            return response()->json(['html' => '', 'next_page' => null, 'has_more' => false]);
+        }
+
+        $html = view('search._'.$type.'_items', $this->itemsViewData($type, $paginator, $viewer))->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
+            'has_more' => $paginator->hasMorePages(),
+        ]);
+    }
+
+    private function itemsViewData(string $type, $paginator, $viewer): array
+    {
+        return match ($type) {
+            'people' => ['users' => $paginator],
+            'posts' => ['posts' => $paginator],
+            'groups' => ['groups' => $paginator],
+            'pages' => ['pages' => $paginator],
+            'shares' => ['shares' => $paginator],
+            default => [],
+        };
     }
 }

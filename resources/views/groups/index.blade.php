@@ -5,56 +5,44 @@
 @section('content')
 <div class="space-y-6">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <h1 class="text-2xl font-bold">{{ __('app.groups') }}</h1>
+        <div>
+            <h1 class="text-2xl font-bold text-fb-text dark:text-zinc-100">{{ __('app.groups') }}</h1>
+            <p class="text-sm text-fb-muted dark:text-zinc-400">{{ __('app.groups_subtitle') }}</p>
+        </div>
         <div class="flex gap-2 w-full lg:w-auto">
-            <a href="{{ route('groups.create') }}" class="inline-flex w-full items-center justify-center rounded-lg bg-fb-blue px-4 py-2.5 font-semibold text-white shadow-sm hover:bg-fb-blue-hover">{{ __('app.create_group') }}</a>
+            <a href="{{ route('groups.create') }}" class="inline-flex w-full lg:w-auto items-center justify-center rounded-xl bg-fb-blue px-4 py-2.5 font-semibold text-white shadow-sm hover:bg-fb-blue-hover transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                {{ __('app.create_group') }}
+            </a>
         </div>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        @forelse($groups as $group)
-            <a href="{{ route('groups.show', $group) }}" class="card-grid-perf group block overflow-hidden rounded-xl border border-fb-border bg-fb-surface shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
-                @if($group->coverUrl())
-                    <img src="{{ $group->coverUrl() }}" alt="" loading="lazy" decoding="async" fetchpriority="low" class="h-28 w-full bg-zinc-200 object-cover dark:bg-zinc-800">
-                @else
-                    <div class="h-28 bg-gradient-to-br from-fb-blue/80 to-blue-800 dark:from-blue-950 dark:to-zinc-800"></div>
-                @endif
-                <div class="flex items-start gap-3 p-4">
-                    <div class="-mt-8 shrink-0 rounded-full bg-fb-surface p-1 dark:bg-zinc-900">
-                        @if($group->avatarUrl())
-                            <img src="{{ $group->avatarUrl() }}" alt="" loading="lazy" decoding="async" class="h-14 w-14 rounded-full object-cover">
-                        @else
-                            <span class="flex h-14 w-14 items-center justify-center rounded-full bg-fb-blue text-xl font-bold text-white">{{ mb_substr($group->name, 0, 1) }}</span>
-                        @endif
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-baseline gap-2 mb-1">
-                            <h2 class="text-lg font-semibold">{{ $group->name }}</h2>
-                            @if($group->is_verified)
-                                <span class="text-xs text-fb-blue">{{ __('app.verified') }}</span>
-                            @endif
-                        </div>
-                        <div class="text-sm text-fb-muted dark:text-zinc-500">{{ __('app.group') }}</div>
-                        @if($group->description)
-                            <div class="text-sm text-fb-text dark:text-zinc-200 line-clamp-2">{{ nl2br(e($group->description)) }}</div>
-                        @endif
-                        <div class="mt-2 text-xs text-fb-muted dark:text-zinc-500">
-                            {{ __('app.members') }}: {{ $group->members_count }} ·
-                            {{ $group->admins_count }} {{ __('app.admins') }}
-                        </div>
-                    </div>
-                    <span class="text-xs px-2 py-1 rounded-full border border-fb-border text-fb-muted dark:border-zinc-700 dark:text-zinc-500">
-                        {{ __('app.page_privacy_'.$group->privacy) }}
-                    </span>
+    <div id="groups-list-container" data-infinite-container="#groups-list-container" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        @if($groups->isNotEmpty())
+            @include('groups._items', ['groups' => $groups])
+        @else
+            <div class="col-span-full text-center py-20">
+                <div class="flex flex-col items-center justify-center text-fb-muted dark:text-zinc-500">
+                    <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <h3 class="text-lg font-semibold text-fb-text dark:text-zinc-100">{{ __('app.no_groups_yet') }}</h3>
+                    <p class="text-sm mt-1 max-w-xs">{{ __('app.no_groups_yet_sub') }}</p>
                 </div>
-            </a>
-        @empty
-            <div class="text-center py-12">
-                <p class="text-fb-muted dark:text-zinc-500">{{ __('app.no_groups_yet') }}</p>
             </div>
-        @endforelse
+        @endif
     </div>
 
-    {{ $groups->links() }}
+    @if($groups->hasMorePages())
+        <div id="groups-list-sentinel" data-infinite-sentinel data-url="{{ route('groups.infinite') }}" data-next-page="{{ $groups->currentPage() + 1 }}" data-has-more="true" data-container="#groups-list-container" data-load-more-btn="#groups-list-load-more-btn" class="h-4"></div>
+        <div class="flex justify-center pt-4 pb-8">
+            <button id="groups-list-load-more-btn" type="button" onclick="window.__infiniteLoaders['groups-list-sentinel']?.()" class="inline-flex items-center gap-2 rounded-xl bg-fb-blue px-5 py-2.5 font-semibold text-white shadow-sm hover:bg-fb-blue-hover transition-colors">
+                {{ __('app.load_more') }}
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </button>
+        </div>
+    @else
+        <div class="text-center py-8">
+            <p class="text-xs text-fb-muted dark:text-zinc-500">{{ __('app.no_more_groups') }}</p>
+        </div>
+    @endif
 </div>
 @endsection

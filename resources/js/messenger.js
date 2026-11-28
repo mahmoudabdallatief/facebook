@@ -331,6 +331,7 @@ async function loadOlderMessages() {
 
     loadingOlder = true;
     messagesPage++;
+    const previousScrollHeight = messagesContainer.scrollHeight;
 
     try {
         const response = await fetch(routes.messageList(currentConversationId) + `?page=${messagesPage}`, {
@@ -358,6 +359,7 @@ async function loadOlderMessages() {
             previousDate = dateKey;
         });
         messagesContainer.insertBefore(fragment, messagesContainer.firstChild);
+        messagesContainer.scrollTop += messagesContainer.scrollHeight - previousScrollHeight;
 
         if (!hasMoreMessages) {
             const notice = document.createElement('div');

@@ -211,7 +211,7 @@ class MessageController extends Controller
         }
 
         $page = $request->get('page', 1);
-        $perPage = 50;
+        $perPage = 10;
 
         $messages = $conversation->messages()
             ->with(['sender', 'media'])

@@ -28,13 +28,13 @@
                     <button type="button" onclick="openNewChatModal()" class="mt-4 rounded-lg bg-fb-blue px-4 py-2 text-white text-sm hover:bg-fb-blue-hover">{{ __('messenger.start_new_chat') }}</button>
                 </div>
             @else
-                @foreach($conversations as $conversation)
-                    @include('messenger.components.conversation-item', ['conversation' => $conversation])
-                @endforeach
-
+                <div id="messenger-conversations-container" data-infinite-container="#messenger-conversations-container" class="divide-y divide-fb-border dark:divide-zinc-800">
+                    @include('messenger._conversations', ['conversations' => $conversations])
+                </div>
                 @if($conversations->hasMorePages())
+                    <div id="messenger-conversations-sentinel" data-infinite-sentinel data-root="#conversations-list" data-url="{{ route('messenger.infinite') }}" data-next-page="{{ $conversations->currentPage() + 1 }}" data-has-more="true" data-container="#messenger-conversations-container" data-load-more-btn="#messenger-conversations-load-more-btn" class="h-4"></div>
                     <div class="p-4 text-center">
-                        <button type="button" onclick="loadMoreConversations(event)" class="text-fb-blue hover:underline text-sm">{{ __('messenger.load_more') }}</button>
+                        <button id="messenger-conversations-load-more-btn" type="button" onclick="window.__infiniteLoaders['messenger-conversations-sentinel']?.()" class="text-fb-blue hover:underline text-sm">{{ __('messenger.load_more') }}</button>
                     </div>
                 @endif
             @endif

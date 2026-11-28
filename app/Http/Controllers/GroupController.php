@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Group;
 use App\Models\Post;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -21,11 +22,31 @@ class GroupController extends Controller
             ->withCount(['members', 'admins'])
             ->visibleTo($user)
             ->latest()
-            ->paginate(18)
+            ->paginate(10)
             ->withQueryString();
 
         return view('groups.index', [
             'groups' => $groups,
+        ]);
+    }
+
+    public function infinite(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $groups = Group::query()
+            ->with('owner')
+            ->withCount(['members', 'admins'])
+            ->visibleTo($user)
+            ->latest()
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('groups._items', ['groups' => $groups])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $groups->hasMorePages() ? $groups->currentPage() + 1 : null,
+            'has_more' => $groups->hasMorePages(),
         ]);
     }
 
@@ -85,15 +106,40 @@ class GroupController extends Controller
                 ->withFeedRelations($user)
                 ->visibleTo($user)
                 ->latest()
-                ->paginate(12)
+                ->paginate(10)
                 ->withQueryString()
-            : Post::query()->whereRaw('1 = 0')->paginate(12);
+            : Post::query()->whereRaw('1 = 0')->paginate(10);
 
         return view('groups.show', [
             'group' => $group,
             'posts' => $posts,
             'memberRole' => $memberRole,
             'isMember' => $memberRole !== null,
+        ]);
+    }
+
+    public function postsInfinite(Group $group, Request $request): JsonResponse
+    {
+        $this->authorize('view', $group);
+
+        $user = $request->user();
+        $user?->loadMissing(['blocks', 'blockedBy']);
+
+        $posts = $group->posts()
+            ->withFeedRelations($user)
+            ->visibleTo($user)
+            ->latest()
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('groups.posts._items', [
+            'posts' => $posts,
+            'group' => $group,
+        ])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $posts->hasMorePages() ? $posts->currentPage() + 1 : null,
+            'has_more' => $posts->hasMorePages(),
         ]);
     }
 

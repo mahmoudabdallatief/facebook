@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\{RedirectResponse, Request};
+use Illuminate\Http\{RedirectResponse, Request, JsonResponse};
 use Illuminate\View\View;
-use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
 
 use App\Models\{Friendship, PostMedia, User};
 
@@ -13,27 +12,42 @@ class FriendController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $user->loadMissing(['friendsOfMine', 'friendOf', 'blocks', 'blockedBy']);
+        $userId = $user->id;
+        $user->loadMissing(['blocks', 'blockedBy']);
 
-        $friends = $user->friends();
+        $friendships = Friendship::query()
+            ->with(['user', 'friend'])
+            ->where('status', 'accepted')
+            ->where(function ($q) use ($userId): void {
+                $q->where('user_id', $userId)->orWhere('friend_id', $userId);
+            })
+            ->latest('accepted_at')
+            ->paginate(10, ['*'], 'friends_page')
+            ->withQueryString();
+
+        $friends = $friendships->getCollection()->map(function (Friendship $f) use ($user): User {
+            return $f->user_id === $user->id ? $f->friend : $f->user;
+        });
 
         $pendingIncoming = Friendship::query()
             ->with('user')
-            ->where('friend_id', $user->id)
+            ->where('friend_id', $userId)
             ->where('status', 'pending')
             ->latest()
-            ->get();
+            ->paginate(10, ['*'], 'incoming_page')
+            ->withQueryString();
 
         $pendingOutgoing = Friendship::query()
             ->with('friend')
-            ->where('user_id', $user->id)
+            ->where('user_id', $userId)
             ->where('status', 'pending')
             ->latest()
-            ->get();
+            ->paginate(10, ['*'], 'outgoing_page')
+            ->withQueryString();
 
         $relatedIds = Friendship::query()
-            ->where('user_id', $user->id)
-            ->orWhere('friend_id', $user->id)
+            ->where('user_id', $userId)
+            ->orWhere('friend_id', $userId)
             ->get()
             ->flatMap(fn (Friendship $f) => [$f->user_id, $f->friend_id])
             ->push($user->id)
@@ -42,15 +56,110 @@ class FriendController extends Controller
 
         $suggestions = User::query()
             ->whereNotIn('id', $relatedIds)
-            ->inRandomOrder()
-            ->limit(12)
-            ->get();
+            ->latest()
+            ->paginate(10, ['*'], 'suggestions_page')
+            ->withQueryString();
 
         return view('friends.index', [
             'friends' => $friends,
+            'friendships' => $friendships,
             'pendingIncoming' => $pendingIncoming,
             'pendingOutgoing' => $pendingOutgoing,
             'suggestions' => $suggestions,
+        ]);
+    }
+
+    public function friendsInfinite(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userId = $user->id;
+
+        $friendships = Friendship::query()
+            ->with(['user', 'friend'])
+            ->where('status', 'accepted')
+            ->where(function ($q) use ($userId): void {
+                $q->where('user_id', $userId)->orWhere('friend_id', $userId);
+            })
+            ->latest('accepted_at')
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('friends._friends', [
+            'friendships' => $friendships,
+            'viewer' => $user,
+        ])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $friendships->hasMorePages() ? $friendships->currentPage() + 1 : null,
+            'has_more' => $friendships->hasMorePages(),
+        ]);
+    }
+
+    public function suggestionsInfinite(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userId = $user->id;
+
+        $relatedIds = Friendship::query()
+            ->where('user_id', $userId)
+            ->orWhere('friend_id', $userId)
+            ->get()
+            ->flatMap(fn (Friendship $f) => [$f->user_id, $f->friend_id])
+            ->push($user->id)
+            ->unique()
+            ->all();
+
+        $users = User::query()
+            ->whereNotIn('id', $relatedIds)
+            ->latest()
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('friends._suggestions', ['users' => $users])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $users->hasMorePages() ? $users->currentPage() + 1 : null,
+            'has_more' => $users->hasMorePages(),
+        ]);
+    }
+
+    public function requestsIncomingInfinite(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        $requests = Friendship::query()
+            ->with('user')
+            ->where('friend_id', $userId)
+            ->where('status', 'pending')
+            ->latest()
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('friends._incoming', ['requests' => $requests])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $requests->hasMorePages() ? $requests->currentPage() + 1 : null,
+            'has_more' => $requests->hasMorePages(),
+        ]);
+    }
+
+    public function requestsOutgoingInfinite(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        $requests = Friendship::query()
+            ->with('friend')
+            ->where('user_id', $userId)
+            ->where('status', 'pending')
+            ->latest()
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('friends._outgoing', ['requests' => $requests])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $requests->hasMorePages() ? $requests->currentPage() + 1 : null,
+            'has_more' => $requests->hasMorePages(),
         ]);
     }
 

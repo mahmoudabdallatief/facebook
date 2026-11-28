@@ -58,11 +58,13 @@ Route::middleware('auth')->group(function (): void {
         Route::post('block', [SettingsController::class, 'blockUser'])->name('block');
         Route::post('block/{user}', [SettingsController::class, 'blockProfileUser'])->name('block-profile');
         Route::delete('block/selected', [SettingsController::class, 'unblockSelected'])->name('unblock-selected');
+        Route::get('blocked/infinite', [SettingsController::class, 'blockedInfinite'])->name('blocked-infinite');
         Route::delete('block/{user}', [SettingsController::class, 'unblockUser'])->name('unblock');
         Route::delete('delete-account', [SettingsController::class, 'deleteAccount'])->name('delete-account');
     });
 
     Route::get('posts', [PostController::class, 'index'])->name('posts.index');
+    Route::get('posts/infinite', [PostController::class, 'infinite'])->name('posts.infinite');
     Route::get('posts/create', [PostController::class, 'create'])->name('posts.create');
     Route::post('posts', [PostController::class, 'store'])->name('posts.store');
     Route::get('posts/{post}', [PostController::class, 'show'])->name('posts.show');
@@ -83,6 +85,7 @@ Route::middleware('auth')->group(function (): void {
 
     Route::prefix('pages')->name('pages.')->group(function (): void {
         Route::get('/', [PageController::class, 'index'])->name('index');
+        Route::get('/infinite', [PageController::class, 'infinite'])->name('infinite');
         Route::get('/create', [PageController::class, 'create'])->name('create');
         Route::post('/', [PageController::class, 'store'])->name('store');
         Route::get('/{page}', [PageController::class, 'show'])->name('show');
@@ -97,6 +100,7 @@ Route::middleware('auth')->group(function (): void {
         Route::delete('/{page}/members/{user}', [PageMemberController::class, 'remove'])->name('members.remove');
 
         Route::get('/{page}/posts', [PagePostController::class, 'index'])->name('posts.index');
+        Route::get('/{page}/posts/infinite', [PageController::class, 'postsInfinite'])->name('posts.infinite');
         Route::get('/{page}/posts/create', [PagePostController::class, 'create'])->name('posts.create');
         Route::post('/{page}/posts', [PagePostController::class, 'store'])->name('posts.store');
         Route::get('/{page}/posts/{post}', [PagePostController::class, 'show'])->name('posts.show');
@@ -107,6 +111,7 @@ Route::middleware('auth')->group(function (): void {
 
     Route::prefix('groups')->name('groups.')->group(function (): void {
         Route::get('/', [GroupController::class, 'index'])->name('index');
+        Route::get('/infinite', [GroupController::class, 'infinite'])->name('infinite');
         Route::get('/create', [GroupController::class, 'create'])->name('create');
         Route::post('/', [GroupController::class, 'store'])->name('store');
         Route::get('/{group}', [GroupController::class, 'show'])->name('show');
@@ -121,6 +126,7 @@ Route::middleware('auth')->group(function (): void {
         Route::delete('/{group}/members/{user}', [GroupMemberController::class, 'remove'])->name('members.remove');
 
         Route::get('/{group}/posts', [GroupPostController::class, 'index'])->name('posts.index');
+        Route::get('/{group}/posts/infinite', [GroupController::class, 'postsInfinite'])->name('posts.infinite');
         Route::get('/{group}/posts/create', [GroupPostController::class, 'create'])->name('posts.create');
         Route::post('/{group}/posts', [GroupPostController::class, 'store'])->name('posts.store');
         Route::get('/{group}/posts/{post}', [GroupPostController::class, 'show'])->name('posts.show');
@@ -139,8 +145,13 @@ Route::middleware('auth')->group(function (): void {
     });
 
     Route::get('search', [SearchController::class, 'index'])->name('search');
+    Route::get('search/infinite', [SearchController::class, 'infinite'])->name('search.infinite');
 
     Route::get('friends', [FriendController::class, 'index'])->name('friends.index');
+    Route::get('friends/infinite/suggestions', [FriendController::class, 'suggestionsInfinite'])->name('friends.infinite.suggestions');
+    Route::get('friends/infinite/friends', [FriendController::class, 'friendsInfinite'])->name('friends.infinite.friends');
+    Route::get('friends/infinite/requests/incoming', [FriendController::class, 'requestsIncomingInfinite'])->name('friends.infinite.requests.incoming');
+    Route::get('friends/infinite/requests/outgoing', [FriendController::class, 'requestsOutgoingInfinite'])->name('friends.infinite.requests.outgoing');
     Route::post('friends/{user}', [FriendController::class, 'send'])->name('friends.send');
     Route::post('friends/requests/{friendship}/accept', [FriendController::class, 'accept'])->name('friends.accept');
     Route::post('friends/requests/{friendship}/reject', [FriendController::class, 'reject'])->name('friends.reject');
@@ -149,12 +160,14 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('messenger', [MessengerController::class, 'index'])->name('messenger.index');
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/infinite', [NotificationController::class, 'infinite'])->name('notifications.infinite');
     Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
     Route::get('notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::get('messenger/search', [MessengerController::class, 'search'])->name('messenger.search');
     Route::get('messenger/unread-count', [MessengerController::class, 'unreadCount'])->name('messenger.unread-count');
     Route::post('messenger/start', [MessengerController::class, 'start'])->name('messenger.start');
+    Route::get('messenger/infinite', [MessengerController::class, 'conversationsInfinite'])->name('messenger.infinite');
     Route::get('messenger/{conversation}', [MessengerController::class, 'show'])->name('messenger.show');
     Route::get('messenger/{conversation}/messages', [MessageController::class, 'index'])->name('messenger.messages.index');
 
@@ -180,3 +193,4 @@ Route::middleware('auth')->group(function (): void {
 });
 
 Route::get('profile/{user}', [ProfileController::class, 'show'])->name('profile.show');
+Route::get('profile/{user}/infinite', [ProfileController::class, 'infinite'])->name('profile.infinite');

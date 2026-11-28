@@ -118,12 +118,21 @@
             @endif
 
             <div class="flex items-center justify-between px-1"><h2 class="text-xl font-bold">{{ __('app.group_posts') }}</h2><span class="text-sm text-fb-muted dark:text-zinc-400">{{ __('app.latest') }}</span></div>
-            @forelse($posts as $post)
-                <x-post-group-page :post="$post" :parent-model="$group" />
-            @empty
-                <div class="rounded-xl border border-fb-border bg-fb-surface px-4 py-12 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900"><p class="text-fb-muted dark:text-zinc-500">{{ __('app.no_group_posts_yet') }}</p></div>
-            @endforelse
-            {{ $posts->links() }}
+            <div id="group-posts-container" data-infinite-container="#group-posts-container" class="space-y-4">
+                @if($posts->isNotEmpty())
+                    @include('groups.posts._items', ['posts' => $posts, 'group' => $group])
+                @else
+                    <div class="rounded-xl border border-fb-border bg-fb-surface px-4 py-12 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900"><p class="text-fb-muted dark:text-zinc-500">{{ __('app.no_group_posts_yet') }}</p></div>
+                @endif
+            </div>
+            @if($posts->hasMorePages())
+                <div id="group-posts-sentinel" data-infinite-sentinel data-url="{{ route('groups.posts.infinite', $group) }}" data-next-page="{{ $posts->currentPage() + 1 }}" data-has-more="true" data-container="#group-posts-container" data-load-more-btn="#group-posts-load-more-btn" class="h-4"></div>
+                <div class="flex justify-center pt-2">
+                    <button id="group-posts-load-more-btn" type="button" onclick="window.__infiniteLoaders['group-posts-sentinel']?.()" class="rounded-lg bg-fb-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-fb-blue-hover">{{ __('app.load_more') }}</button>
+                </div>
+            @else
+                <div class="mt-4 text-center py-4 text-xs text-fb-muted dark:text-zinc-500">{{ __('app.no_more_posts') }}</div>
+            @endif
             @endif
         </section>
     </div>

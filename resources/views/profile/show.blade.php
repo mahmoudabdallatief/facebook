@@ -88,17 +88,22 @@
     @endauth
 
     <x-card :title="__('app.timeline')" class="mt-4">
-        <div class="space-y-4">
-            @forelse($posts as $post)
-                <x-post :post="$post" />
-            @empty
+        <div id="profile-posts-container" data-infinite-container="#profile-posts-container" class="space-y-4">
+            @if($posts->isNotEmpty())
+                @include('profile._posts', ['posts' => $posts])
+            @else
                 <div class="text-center py-8">
                     <p class="text-fb-muted dark:text-zinc-500">{{ __('app.no_posts_yet') }}</p>
                 </div>
-            @endforelse
+            @endif
         </div>
-        @if(method_exists($posts, 'links'))
-            <div class="mt-4">{{ $posts->links() }}</div>
+        @if($posts->hasMorePages())
+            <div id="profile-posts-sentinel" data-infinite-sentinel data-url="{{ route('profile.infinite', $profileUser) }}" data-next-page="{{ $posts->currentPage() + 1 }}" data-has-more="true" data-container="#profile-posts-container" data-load-more-btn="#profile-posts-load-more-btn" class="h-4"></div>
+            <div class="mt-4 flex justify-center">
+                <button id="profile-posts-load-more-btn" type="button" onclick="window.__infiniteLoaders['profile-posts-sentinel']?.()" class="rounded-lg bg-fb-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-fb-blue-hover">{{ __('app.load_more') }}</button>
+            </div>
+        @else
+            <div class="mt-4 text-center py-4 text-xs text-fb-muted dark:text-zinc-500">{{ __('app.no_more_posts') }}</div>
         @endif
     </x-card>
 </div>

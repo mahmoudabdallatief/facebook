@@ -8,75 +8,46 @@
 
     @if($pendingIncoming->isNotEmpty())
         <x-card :title="__('app.friend_requests')">
-            <div class="divide-y divide-fb-border dark:divide-zinc-800">
-                @foreach($pendingIncoming as $req)
-                    <div class="flex items-center justify-between gap-3 py-3">
-                        <a href="{{ route('profile.show', $req->user) }}" class="flex items-center gap-3 min-w-0">
-                            @if($req->user->avatarUrl())
-                                <img src="{{ $req->user->avatarUrl() }}" alt="" class="h-8 w-8 rounded-full object-cover">
-                            @else
-                                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fb-blue text-xs font-bold text-white">{{ mb_substr($req->user->name, 0, 1) }}</span>
-                            @endif
-                            <span class="font-medium truncate">{{ $req->user->name }}</span>
-                        </a>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <form method="POST" action="{{ route('friends.accept', $req) }}">@csrf
-                                <button type="submit" class="rounded-lg bg-fb-blue px-3 py-1.5 text-sm font-medium text-white hover:bg-fb-blue-hover">{{ __('app.accept') }}</button>
-                            </form>
-                            <form method="POST" action="{{ route('friends.reject', $req) }}">@csrf
-                                <button type="submit" class="rounded-lg bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">{{ __('app.reject') }}</button>
-                            </form>
-                        </div>
-                    </div>
-                @endforeach
+            <div id="incoming-container" data-infinite-container="#incoming-container" class="divide-y divide-fb-border dark:divide-zinc-800">
+                @include('friends._incoming', ['requests' => $pendingIncoming])
             </div>
+            @if($pendingIncoming->hasMorePages())
+                <div id="incoming-sentinel" data-infinite-sentinel data-url="{{ route('friends.infinite.requests.incoming') }}" data-next-page="{{ $pendingIncoming->currentPage() + 1 }}" data-has-more="true" data-container="#incoming-container" data-load-more-btn="#incoming-load-more-btn" class="h-4"></div>
+                <div class="flex justify-center pt-2">
+                    <button id="incoming-load-more-btn" type="button" onclick="window.__infiniteLoaders['incoming-sentinel']?.()" class="rounded-lg bg-fb-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-fb-blue-hover">{{ __('app.load_more') }}</button>
+                </div>
+            @endif
         </x-card>
     @endif
 
     @if($pendingOutgoing->isNotEmpty())
         <x-card :title="__('app.sent_requests')">
-            <div class="divide-y divide-fb-border dark:divide-zinc-800">
-                @foreach($pendingOutgoing as $req)
-                    <div class="flex items-center justify-between gap-3 py-3">
-                        <a href="{{ route('profile.show', $req->friend) }}" class="flex items-center gap-3 min-w-0">
-                            @if($req->friend->avatarUrl())
-                                <img src="{{ $req->friend->avatarUrl() }}" alt="" class="h-8 w-8 rounded-full object-cover">
-                            @else
-                                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fb-blue text-xs font-bold text-white">{{ mb_substr($req->friend->name, 0, 1) }}</span>
-                            @endif
-                            <span class="font-medium truncate">{{ $req->friend->name }}</span>
-                        </a>
-                        <form method="POST" action="{{ route('friends.cancel', $req) }}">@csrf
-                            <button type="submit" class="rounded-lg bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">{{ __('app.cancel_request') }}</button>
-                        </form>
-                    </div>
-                @endforeach
+            <div id="outgoing-container" data-infinite-container="#outgoing-container" class="divide-y divide-fb-border dark:divide-zinc-800">
+                @include('friends._outgoing', ['requests' => $pendingOutgoing])
             </div>
+            @if($pendingOutgoing->hasMorePages())
+                <div id="outgoing-sentinel" data-infinite-sentinel data-url="{{ route('friends.infinite.requests.outgoing') }}" data-next-page="{{ $pendingOutgoing->currentPage() + 1 }}" data-has-more="true" data-container="#outgoing-container" data-load-more-btn="#outgoing-load-more-btn" class="h-4"></div>
+                <div class="flex justify-center pt-2">
+                    <button id="outgoing-load-more-btn" type="button" onclick="window.__infiniteLoaders['outgoing-sentinel']?.()" class="rounded-lg bg-fb-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-fb-blue-hover">{{ __('app.load_more') }}</button>
+                </div>
+            @endif
         </x-card>
     @endif
 
     <div class="grid gap-6 lg:grid-cols-2">
         <x-card :title="__('app.your_friends')">
-            @if($friends->isEmpty())
+            @if($friendships->isEmpty())
                 <p class="text-sm text-fb-muted dark:text-zinc-400">{{ __('app.no_friends_yet') }}</p>
             @else
-                <div class="divide-y divide-fb-border dark:divide-zinc-800">
-                    @foreach($friends as $friend)
-                        <div class="flex items-center justify-between gap-3 py-3">
-                            <a href="{{ route('profile.show', $friend) }}" class="flex items-center gap-3 min-w-0">
-                                @if($friend->avatarUrl())
-                                    <img src="{{ $friend->avatarUrl() }}" alt="" class="h-8 w-8 rounded-full object-cover">
-                                @else
-                                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fb-blue text-xs font-bold text-white">{{ mb_substr($friend->name, 0, 1) }}</span>
-                                @endif
-                                <span class="font-medium truncate">{{ $friend->name }}</span>
-                            </a>
-                            <form method="POST" action="{{ route('friends.destroy', $friend) }}">@csrf @method('DELETE')
-                                <button type="submit" class="rounded-lg bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">{{ __('app.unfriend') }}</button>
-                            </form>
-                        </div>
-                    @endforeach
+                <div id="friends-container" data-infinite-container="#friends-container" class="divide-y divide-fb-border dark:divide-zinc-800">
+                    @include('friends._friends', ['friendships' => $friendships, 'viewer' => auth()->user()])
                 </div>
+                @if($friendships->hasMorePages())
+                    <div id="friends-sentinel" data-infinite-sentinel data-url="{{ route('friends.infinite.friends') }}" data-next-page="{{ $friendships->currentPage() + 1 }}" data-has-more="true" data-container="#friends-container" data-load-more-btn="#friends-load-more-btn" class="h-4"></div>
+                    <div class="flex justify-center pt-2">
+                        <button id="friends-load-more-btn" type="button" onclick="window.__infiniteLoaders['friends-sentinel']?.()" class="rounded-lg bg-fb-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-fb-blue-hover">{{ __('app.load_more') }}</button>
+                    </div>
+                @endif
             @endif
         </x-card>
 
@@ -84,23 +55,15 @@
             @if($suggestions->isEmpty())
                 <p class="text-sm text-fb-muted dark:text-zinc-400">{{ __('app.no_suggestions') }}</p>
             @else
-                <div class="divide-y divide-fb-border dark:divide-zinc-800">
-                    @foreach($suggestions as $person)
-                        <div class="flex items-center justify-between gap-3 py-3">
-                            <a href="{{ route('profile.show', $person) }}" class="flex items-center gap-3 min-w-0">
-                                @if($person->avatarUrl())
-                                    <img src="{{ $person->avatarUrl() }}" alt="" class="h-8 w-8 rounded-full object-cover">
-                                @else
-                                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fb-blue text-xs font-bold text-white">{{ mb_substr($person->name, 0, 1) }}</span>
-                                @endif
-                                <span class="font-medium truncate">{{ $person->name }}</span>
-                            </a>
-                            <form method="POST" action="{{ route('friends.send', $person) }}">@csrf
-                                <button type="submit" class="rounded-lg bg-fb-blue px-3 py-1.5 text-sm font-medium text-white hover:bg-fb-blue-hover">{{ __('app.add_friend') }}</button>
-                            </form>
-                        </div>
-                    @endforeach
+                <div id="suggestions-container" data-infinite-container="#suggestions-container" class="divide-y divide-fb-border dark:divide-zinc-800">
+                    @include('friends._suggestions', ['users' => $suggestions])
                 </div>
+                @if($suggestions->hasMorePages())
+                    <div id="suggestions-sentinel" data-infinite-sentinel data-url="{{ route('friends.infinite.suggestions') }}" data-next-page="{{ $suggestions->currentPage() + 1 }}" data-has-more="true" data-container="#suggestions-container" data-load-more-btn="#suggestions-load-more-btn" class="h-4"></div>
+                    <div class="flex justify-center pt-2">
+                        <button id="suggestions-load-more-btn" type="button" onclick="window.__infiniteLoaders['suggestions-sentinel']?.()" class="rounded-lg bg-fb-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-fb-blue-hover">{{ __('app.load_more') }}</button>
+                    </div>
+                @endif
             @endif
         </x-card>
     </div>

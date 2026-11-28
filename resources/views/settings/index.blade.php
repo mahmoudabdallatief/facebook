@@ -89,24 +89,21 @@ use App\Models\Comment;
                 </div>
                 <br>
                 <!-- قائمة المحظورين مع خيار اختيار -->
-                <div id="blocked-list" class="divide-y divide-fb-border dark:divide-zinc-800 mt-2 max-h-[400px] overflow-y-auto border rounded-lg p-2 bg-white dark:bg-zinc-900">
-                    @foreach($blockedUsers as $blocked)
-                        <div class="blocked-item flex items-center justify-between gap-3 py-2.5 px-2 rounded hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
-                             data-name="{{ $blocked->name }}"
-                             data-id="{{ $blocked->id }}">
-                            <div class="flex items-center gap-3 w-full min-w-0">
-                                <input type="radio" name="blocked_user_id" value="{{ $blocked->id }}"
-                                    class="mt-0.5 shrink-0 text-fb-blue ring-offset-white focus:ring-fb-blue dark:ring-offset-zinc-900">
-                                @if($blocked->avatarUrl())
-                                    <img src="{{ $blocked->avatarUrl() }}" alt="" class="h-8 w-8 rounded-full object-cover">
-                                @else
-                                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fb-blue text-xs font-bold text-white">{{ mb_substr($blocked->name, 0, 1) }}</span>
-                                @endif
-                                <span class="font-medium truncate block-list-name">{{ $blocked->name }}</span>
-                            </div>
-                        </div>
-                    @endforeach
+                <div id="blocked-list" class="divide-y divide-fb-border dark:divide-zinc-800 mt-2 border rounded-lg p-2 bg-white dark:bg-zinc-900">
+                    @include('settings._blocked_items', ['blockedUsers' => $blockedUsers])
                 </div>
+
+                @if($blockedUsers->hasMorePages())
+                    <div id="blocked-sentinel" data-infinite-sentinel data-url="{{ route('settings.blocked-infinite') }}" data-next-page="{{ $blockedUsers->currentPage() + 1 }}" data-has-more="true" data-container="#blocked-list" data-load-more-btn="#blocked-load-more-btn" class="h-4"></div>
+                    <div class="flex justify-center pt-4 pb-2">
+                        <button id="blocked-load-more-btn" type="button" onclick="window.__infiniteLoaders['blocked-sentinel']?.()" class="inline-flex items-center gap-2 rounded-xl bg-fb-blue px-5 py-2.5 font-semibold text-white shadow-sm hover:bg-fb-blue-hover transition-colors">
+                            {{ __('app.load_more') }}
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </button>
+                    </div>
+                @else
+                    <div class="text-center py-4 text-xs text-fb-muted dark:text-zinc-500">{{ __('app.no_more_blocked') }}</div>
+                @endif
 
                 <!-- زر إلغاء الحظر في الأسفل -->
                 <form id="unblock-selected-form" method="POST" action="{{ route('settings.unblock-selected') }}" class="mt-4 space-y-2">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Page;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -21,11 +22,32 @@ class PageController extends Controller
             ->withCount(['members', 'admins'])
             ->visibleTo($user)
             ->latest()
-            ->paginate(18)
+            ->paginate(10)
             ->withQueryString();
 
         return view('pages.index', [
             'pages' => $pages,
+        ]);
+    }
+
+    public function infinite(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $pages = Page::query()
+            ->where('type', 'page')
+            ->with('owner')
+            ->withCount(['members', 'admins'])
+            ->visibleTo($user)
+            ->latest()
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('pages._items', ['pages' => $pages])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $pages->hasMorePages() ? $pages->currentPage() + 1 : null,
+            'has_more' => $pages->hasMorePages(),
         ]);
     }
 
@@ -81,7 +103,7 @@ class PageController extends Controller
         $posts = $page->posts()
             ->withFeedRelations($user)
             ->latest()
-            ->paginate(12)
+            ->paginate(10)
             ->withQueryString();
 
         $memberRole = $page->memberRole($user);
@@ -91,6 +113,30 @@ class PageController extends Controller
             'posts' => $posts,
             'memberRole' => $memberRole,
             'isMember' => $memberRole !== null,
+        ]);
+    }
+
+    public function postsInfinite(Page $page, Request $request): JsonResponse
+    {
+        $this->authorize('view', $page);
+
+        $user = $request->user();
+        $user?->loadMissing(['blocks', 'blockedBy']);
+
+        $posts = $page->posts()
+            ->withFeedRelations($user)
+            ->latest()
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('pages.posts._items', [
+            'posts' => $posts,
+            'page' => $page,
+        ])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $posts->hasMorePages() ? $posts->currentPage() + 1 : null,
+            'has_more' => $posts->hasMorePages(),
         ]);
     }
 

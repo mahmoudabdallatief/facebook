@@ -19,9 +19,26 @@ class SettingsController extends Controller
     {
         $user = auth()->user();
 
+        $blockedUsers = $user->blockedUsers()->latest()->paginate(10);
+
         return view('settings.index', [
             'user' => $user,
-            'blockedUsers' => $user->blockedUsers()->latest()->get(),
+            'blockedUsers' => $blockedUsers,
+        ]);
+    }
+
+    public function blockedInfinite(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $blockedUsers = $user->blockedUsers()->latest()->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('settings._blocked_items', ['blockedUsers' => $blockedUsers])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $blockedUsers->hasMorePages() ? $blockedUsers->currentPage() + 1 : null,
+            'has_more' => $blockedUsers->hasMorePages(),
         ]);
     }
 

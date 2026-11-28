@@ -2,15 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Post;
-use App\Models\PostMedia;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Http\{JsonResponse, RedirectResponse, Request};
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
+use App\Models\{Friendship, Post, PostMedia, User};
 class PostController extends Controller
 {
     public function index(Request $request): View
@@ -22,11 +19,31 @@ class PostController extends Controller
             ->withFeedRelations($user)
             ->visibleTo($user)
             ->latest()
-            ->paginate(12)
+            ->paginate(10)
             ->withQueryString();
 
         return view('posts.index', [
             'posts' => $posts,
+        ]);
+    }
+
+    public function infinite(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user?->loadMissing(['blocks', 'blockedBy']);
+
+        $posts = Post::query()
+            ->withFeedRelations($user)
+            ->visibleTo($user)
+            ->latest()
+            ->paginate(10, ['*'], 'page', (int) $request->get('page', 1));
+
+        $html = view('posts._items', ['posts' => $posts])->render();
+
+        return response()->json([
+            'html' => $html,
+            'next_page' => $posts->hasMorePages() ? $posts->currentPage() + 1 : null,
+            'has_more' => $posts->hasMorePages(),
         ]);
     }
 
