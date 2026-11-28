@@ -267,6 +267,7 @@ return [
     'group' => 'Group',
     'create_page' => 'Create Page',
     'create_group' => 'Create Group',
+    'group_name' => 'Group Name',
     'page_name' => 'Page Name',
     'page_slug' => 'Slug',
     'page_description' => 'Description',

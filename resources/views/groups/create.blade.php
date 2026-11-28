@@ -9,7 +9,7 @@
             @csrf
 
             <div class="space-y-1">
-                <label for="name" class="block text-sm font-medium text-fb-muted dark:text-zinc-300">{{ __('app.page_name') }}</label>
+                <label for="name" class="block text-sm font-medium text-fb-muted dark:text-zinc-300">{{ __('app.group_name') }}</label>
                 <input type="text" id="name" name="name" value="{{ old('name') }}" required autofocus class="w-full rounded-lg border border-fb-border bg-white px-3 py-2 text-sm shadow-sm outline-none ring-fb-blue/30 focus:border-fb-blue focus:ring-4 dark:border-zinc-700 dark:bg-zinc-900">
                 @error('name')
                     <p class="text-xs text-red-600 dark:text-red-400">{{ $message }}</p>

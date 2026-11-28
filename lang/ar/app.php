@@ -268,6 +268,7 @@ return [
     'group' => 'المجموعة',
     'create_page' => 'إنشاء صفحة',
     'create_group' => 'إنشاء مجموعة',
+    'group_name' => 'اسم المجموعة',
     'page_name' => 'اسم الصفحة',
     'page_slug' => 'الرابط المختصر',
     'page_description' => 'الوصف',
