@@ -7,10 +7,7 @@ use Illuminate\View\View;
 use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
 
 use App\Models\{Friendship, PostMedia, User};
-use App\Models\Friendship;
-use App\Models\User;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+
 class FriendController extends Controller
 {
     public function index(Request $request): View

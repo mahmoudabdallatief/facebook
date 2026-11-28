@@ -265,7 +265,7 @@ function createMessageElement(message) {
             if (m.type === 'image') {
                 mediaHtml += `<a href="${m.url}" target="_blank" rel="noopener noreferrer" class="block rounded-lg overflow-hidden"><img src="${m.url}" alt="" class="w-full h-auto max-h-64 object-cover"></a>`;
             } else if (m.type === 'video') {
-                mediaHtml += `<video controls class="w-full max-h-64 rounded-lg" preload="metadata"><source src="${m.url}" type="${m.metadata?.mime_type || 'video/mp4'}"></video>`;
+                mediaHtml += `<button type="button" data-video-facade data-video-src="${escapeHtml(m.url)}" data-video-type="${escapeHtml(m.metadata?.mime_type || 'video/mp4')}" class="w-full max-h-64 aspect-video rounded-lg bg-black text-white" aria-label="${escapeHtml(__('messenger.js.play_video'))}">▶</button>`;
             }
         });
         mediaHtml += '</div>';
@@ -452,12 +452,14 @@ async function sendMessage(event) {
 }
 
 function handleMediaSelect(event) {
-    const files = Array.from(event.target.files || []);
+    const files = Array.from(event.target.files || []).slice(0, 10);
     if (files.length === 0) return;
+    if (event.target.files.length > 10) alert('You can attach up to 10 files.');
 
     mediaPreviews.innerHTML = '';
     uploadedMediaIds.innerHTML = '';
 
+    const queue = [];
     for (const file of files) {
         const maxSize = file.type.startsWith('video/') ? 2 * 1024 * 1024 * 1024 : 50 * 1024 * 1024;
         const preview = makeMediaPreview(file);
@@ -471,14 +473,21 @@ function handleMediaSelect(event) {
             continue;
         }
 
-        uploadingCount++;
-        uploadFile(file, preview).catch((error) => {
-            preview.querySelector('.upload-status').textContent = error.message;
-            preview.dataset.failed = 'true';
-        }).finally(() => {
-            uploadingCount--;
-        });
+        queue.push({ file, preview });
     }
+    uploadingCount = queue.length;
+    let next = 0;
+    const worker = async () => {
+        while (next < queue.length) {
+            const { file, preview } = queue[next++];
+            try { await uploadFile(file, preview); }
+            catch (error) {
+                preview.querySelector('.upload-status').textContent = error.message;
+                preview.dataset.failed = 'true';
+            } finally { uploadingCount--; }
+        }
+    };
+    Promise.all(Array.from({ length: Math.min(2, queue.length) }, worker));
 
     event.target.value = '';
 }
@@ -514,7 +523,7 @@ async function uploadFile(file, preview) {
 
     preview.querySelector('.upload-status').textContent = __('messenger.js.uploading_chunks');
 
-    const concurrency = Math.min(3, totalChunks);
+    const concurrency = Math.min(2, totalChunks);
     let completed = 0;
     const workers = Array.from({ length: concurrency }, async (_, worker) => {
         for (let index = worker; index < totalChunks; index += concurrency) {

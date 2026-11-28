@@ -12,8 +12,9 @@ use Illuminate\Support\Str;
 
 class ChunkedUploadController extends Controller
 {
-    // Keep chunks below common PHP upload_max_filesize defaults.
-    private const CHUNK_SIZE = 1 * 1024 * 1024;
+    // Small requests stay reliable while keeping large uploads to a manageable number of parts.
+    private const CHUNK_SIZE = 5 * 1024 * 1024;
+    private const MAX_IMAGE_SIZE = 50 * 1024 * 1024;
 
     private const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
 
@@ -44,6 +45,10 @@ class ChunkedUploadController extends Controller
 
         $mimeType = $validated['mime_type'];
         $isMessage = $target === 'message';
+
+        if ($isMessage && ! str_starts_with($mimeType, 'video/') && $validated['file_size'] > self::MAX_IMAGE_SIZE) {
+            return response()->json(['success' => false, 'message' => 'Image max size is 50MB'], 422);
+        }
 
         if ($isMessage) {
             $isVideo = str_starts_with($mimeType, 'video/');
@@ -124,7 +129,8 @@ class ChunkedUploadController extends Controller
         }
 
         $chunk = $request->file('chunk');
-        if ($chunk->getSize() < 1 || $chunk->getSize() > $media->chunk_size) {
+        $expectedSize = min($media->chunk_size, $media->total_size - ($validated['chunk_index'] * $media->chunk_size));
+        if ($chunk->getSize() < 1 || $chunk->getSize() !== $expectedSize) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid chunk size',

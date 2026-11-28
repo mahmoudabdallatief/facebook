@@ -43,7 +43,7 @@ class MessageController extends Controller
 
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
-            'media_ids' => ['sometimes', 'array'],
+            'media_ids' => ['sometimes', 'array', 'max:10'],
             'media_ids.*' => ['integer', 'exists:message_media,id'],
         ]);
 

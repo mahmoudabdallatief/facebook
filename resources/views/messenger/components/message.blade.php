@@ -15,9 +15,7 @@ $timeClass = $isOwn ? 'text-blue-100' : 'text-fb-muted';
                             <img src="{{ $media->url }}" alt="" class="w-full h-auto max-h-64 object-cover">
                         </a>
                     @elseif($media->type === 'video')
-                        <video controls class="w-full max-h-64 rounded-lg" preload="metadata">
-                            <source src="{{ $media->url }}" type="{{ $media->metadata['mime_type'] ?? 'video/mp4' }}">
-                        </video>
+                        <button type="button" data-video-facade data-video-src="{{ $media->url }}" data-video-type="{{ $media->metadata['mime_type'] ?? 'video/mp4' }}" class="w-full max-h-64 aspect-video rounded-lg bg-black text-white" aria-label="{{ __('messenger.js.play_video') }}">▶</button>
                     @endif
                 @endforeach
             </div>

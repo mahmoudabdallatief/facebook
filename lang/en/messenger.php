@@ -48,5 +48,6 @@ return [
         'upload_complete' => 'Upload complete',
         'image_max' => 'Images can be up to 50 MB.',
         'video_max' => 'Videos can be up to 2 GB.',
+        'play_video' => 'Play video',
     ],
 ];
